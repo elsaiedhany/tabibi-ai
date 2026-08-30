@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     const rawIp = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
     const ip = rawIp.trim();
     const body = await req.json().catch(() => ({}));
-    const { email, password } = body;
+    const { email, password, selectedRole } = body;
 
     const cleanEmail = typeof email === "string" ? email.toLowerCase().trim() : "";
 
@@ -59,10 +59,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "بيانات الدخول غير صحيحة" }, { status: 401 });
     }
 
-    // 6. Reset Rate Limit counter on SUCCESSFUL password verification
+    // 6. Server-Side Role Enforcement Check
+    if (selectedRole === "SUPER_ADMIN" && user.role !== Role.SUPER_ADMIN) {
+      await logAuditEvent({ userId: user.id, action: "UNAUTHORIZED_ROLE_SELECTION", details: "Selected SUPER_ADMIN for non-admin user" });
+      return NextResponse.json({ error: "الحساب ده مش مصرح له بالدخول إلى لوحة الإدارة." }, { status: 403 });
+    }
+
+    // 7. Reset Rate Limit counter on SUCCESSFUL password verification
     resetRateLimit(rateLimitKey);
 
-    // 7. Doctor Context Resolution
+    // 8. Doctor Context Resolution
     const firstDoctorUser = user.doctorUsers[0];
     let doctorId = firstDoctorUser?.doctorId;
     let doctorName = firstDoctorUser?.doctor?.name;
@@ -83,7 +89,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 8. Generate JWT Session Token
+    // 9. Generate JWT Session Token
     const token = await createSessionToken({
       userId: user.id,
       email: user.email,
@@ -96,6 +102,8 @@ export async function POST(req: NextRequest) {
 
     await logAuditEvent({ doctorId, userId: user.id, action: "LOGIN", details: `Role: ${user.role}` });
 
+    const redirectTo = user.role === Role.SUPER_ADMIN ? "/doctors" : user.role === Role.STAFF ? "/appointments" : "/dashboard";
+
     const res = NextResponse.json({
       success: true,
       user: {
@@ -106,6 +114,7 @@ export async function POST(req: NextRequest) {
         doctorId,
         doctorName,
       },
+      redirectTo,
     });
 
     res.cookies.set("tabibi_session", token, {
@@ -118,6 +127,6 @@ export async function POST(req: NextRequest) {
 
     return res;
   } catch (error) {
-    return NextResponse.json({ error: "حدث خطأ في الخادم" }, { status: 500 });
+    return NextResponse.json({ error: "حدث خطأ غير متوقع في الخادم" }, { status: 500 });
   }
 }
