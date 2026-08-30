@@ -80,7 +80,7 @@ export async function processIncomingPatientMessage(
 
   await db.conversation.update({
     where: { id: conversation.id },
-    data: { lastIntent: detected.intent },
+    data: { lastIntent: String(detected.intent) },
   });
 
   // 3. Human Active Guardrail: If Receptionist took over, suppress AI reply
