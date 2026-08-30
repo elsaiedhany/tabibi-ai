@@ -46,7 +46,7 @@ export async function verifySessionToken(token: string): Promise<UserSession | n
       select: { status: true },
     });
 
-    if (!user || user.status !== "ACTIVE") {
+    if (!user || user.status === "SUSPENDED" || user.status === "DISABLED") {
       return null;
     }
 

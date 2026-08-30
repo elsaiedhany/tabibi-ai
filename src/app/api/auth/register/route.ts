@@ -156,6 +156,7 @@ export async function POST(req: NextRequest) {
 
     return res;
   } catch (error) {
+    console.error("Registration endpoint error:", error);
     return NextResponse.json({ error: "حدث خطأ غير متوقع أثناء التسجيل" }, { status: 500 });
   }
 }
