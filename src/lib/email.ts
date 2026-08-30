@@ -1,4 +1,4 @@
-import { logAuditEvent } from "@/lib/audit";
+import { logAuditEvent } from "./audit";
 
 export interface EmailNotificationPayload {
   to: string;

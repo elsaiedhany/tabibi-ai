@@ -1,5 +1,5 @@
-import { db } from "@/lib/db";
-import { logAuditEvent } from "@/lib/audit";
+import { db } from "./db";
+import { logAuditEvent } from "./audit";
 
 export interface SubscriptionStatusResult {
   allowed: boolean;
