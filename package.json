@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node -e \"const fs=require('fs'); const url=process.env.DATABASE_URL||''; if(process.env.VERCEL || url.startsWith('postgres://') || url.startsWith('postgresql://')) { fs.copyFileSync('prisma/schema.postgresql.prisma', 'prisma/schema.prisma'); }\" && prisma generate && next build",
+    "build": "node scripts/prebuild.js && prisma generate && next build",
     "start": "next start",
     "lint": "tsc --noEmit",
     "db:push": "prisma db push",
