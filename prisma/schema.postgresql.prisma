@@ -236,14 +236,19 @@ model Conversation {
 }
 
 model Message {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   conversationId String
-  wamid          String?  @unique
-  sender         String   // "PATIENT", "BOT", "STAFF"
-  text           String
-  intentDetected String?
-  status         String   @default("delivered") // "sent", "delivered", "read", "failed"
-  createdAt      DateTime @default(now())
+  sender         String       // "PATIENT" | "BOT" | "HUMAN_AGENT"
+  content        String
+  normalizedText String?
+  detectedIntent String?
+  wasHandledByAi Boolean      @default(false)
+  ruleMatched    String?
+  mediaType      String?      // "text" | "audio" | "image" | "document"
+  mediaUrl       String?
+  status         String       @default("delivered") // "sent", "delivered", "read"
+  whatsappId     String?
+  createdAt      DateTime     @default(now())
 
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 

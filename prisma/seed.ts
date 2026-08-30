@@ -266,13 +266,13 @@ async function main() {
   });
 
   const convA = await prisma.conversation.create({
-    data: { doctorId: docA.id, patientId: patientA.id, state: ConversationState.IDLE, handoffStatus: HandoffStatus.AI_ACTIVE, lastIntent: IntentType.BOOK_APPOINTMENT },
+    data: { doctorId: docA.id, patientId: patientA.id, state: ConversationState.IDLE, handoffStatus: HandoffStatus.AI_ACTIVE },
   });
 
   await prisma.message.createMany({
     data: [
       { conversationId: convA.id, sender: "PATIENT", content: "السلام عليكم، عايز احجز كشف جلدية مع د. أحمد" },
-      { conversationId: convA.id, sender: "BOT", content: "وعليكم السلام! اختار الخدمة: 1. كشف جلدية (500 ج.م)", ruleMatched: "STATE_MACHINE" },
+      { conversationId: convA.id, sender: "BOT", content: "وعليكم السلام! اختار الخدمة: 1. كشف جلدية (500 ج.م)" },
     ],
   });
 
