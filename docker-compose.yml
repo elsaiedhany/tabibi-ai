@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # 1. Tabibi AI Next.js Application & API
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://tabibi:tabibi_secure_pass_2026@postgres:5432/tabibi_db?schema=public
+      - JWT_SECRET=tabibi_super_secret_jwt_key_egyptian_clinic_2026
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - WHATSAPP_ACCESS_TOKEN=${WHATSAPP_ACCESS_TOKEN}
+      - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID}
+      - WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN}
+    depends_on:
+      - postgres
+      - redis
+    restart: always
+
+  # 2. PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tabibi
+      POSTGRES_PASSWORD: tabibi_secure_pass_2026
+      POSTGRES_DB: tabibi_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+  # 3. Redis Cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+
+  # 4. n8n Automation Engine
+  n8n:
+    image: n8nio/n8n:latest
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - WEBHOOK_URL=http://localhost:5678/
+      - TABIBI_API_URL=http://app:3000
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - app
+    restart: always
+
+volumes:
+  postgres_data:
+  redis_data:
+  n8n_data:

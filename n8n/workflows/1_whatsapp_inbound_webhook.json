@@ -1,0 +1,54 @@
+{
+  "name": "1. WhatsApp Inbound Webhook Router - Tabibi AI",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-inbound",
+        "options": {}
+      },
+      "name": "WhatsApp Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const item = items[0].json;\nconst message = item.body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];\nif (!message) return [];\nreturn [{\n  json: {\n    patientPhone: message.from,\
+    text: message.text?.body || '',\
+    whatsappMessageId: message.id,\
+    timestamp: message.timestamp\n  }\n}];"
+      },
+      "name": "Normalize Webhook Payload",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.TABIBI_API_URL || 'http://localhost:3000'}}/api/whatsapp/webhook",
+        "options": {},
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "patientPhone", "value": "={{$json.patientPhone}}" },
+            { "name": "rawText", "value": "={{$json.text}}" },
+            { "name": "whatsappMessageId", "value": "={{$json.whatsappMessageId}}" }
+          ]
+        }
+      },
+      "name": "Forward to Tabibi Master Pipeline",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [650, 300]
+    }
+  ],
+  "connections": {
+    "WhatsApp Webhook Trigger": {
+      "main": [[{ "node": "Normalize Webhook Payload", "type": "main", "index": 0 }]]
+    },
+    "Normalize Webhook Payload": {
+      "main": [[{ "node": "Forward to Tabibi Master Pipeline", "type": "main", "index": 0 }]]
+    }
+  }
+}

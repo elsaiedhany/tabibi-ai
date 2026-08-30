@@ -1,0 +1,36 @@
+{
+  "name": "2. Scheduled Patient Reminders - Tabibi AI",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "name": "Every 30 Minutes Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.TABIBI_API_URL || 'http://localhost:3000'}}/api/reminders",
+        "requestMethod": "POST"
+      },
+      "name": "Trigger Pending Patient Reminders API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [500, 300]
+    }
+  ],
+  "connections": {
+    "Every 30 Minutes Cron": {
+      "main": [[{ "node": "Trigger Pending Patient Reminders API", "type": "main", "index": 0 }]]
+    }
+  }
+}

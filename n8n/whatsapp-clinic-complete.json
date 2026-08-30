@@ -1,0 +1,253 @@
+{
+  "name": "Tabibi AI - Master WhatsApp Receptionist & Clinic Automation Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-clinic-webhook",
+        "options": {}
+      },
+      "name": "1. Inbound WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [180, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "whatsapp-clinic-webhook",
+        "options": {}
+      },
+      "name": "2. Meta Hub Verification Webhook (GET)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [180, 500]
+    },
+    {
+      "parameters": {
+        "functionCode": "const query = items[0].json.query || {};\nconst mode = query['hub.mode'];\nconst token = query['hub.verify_token'];\nconst challenge = query['hub.challenge'];\nconst expectedToken = process.env.WHATSAPP_VERIFY_TOKEN || 'tabibi_webhook_verify_secret';\nif (mode === 'subscribe' && token === expectedToken) {\n  return [{ json: { status: 200, response: challenge || 'OK' } }];\n}\nreturn [{ json: { status: 403, response: 'Forbidden' } }];"
+      },
+      "name": "Verify Meta Webhook Token",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [420, 500]
+    },
+    {
+      "parameters": {
+        "functionCode": "const body = items[0].json.body || {};\nconst entry = body.entry?.[0];\nconst change = entry?.changes?.[0]?.value;\nconst message = change?.messages?.[0];\nconst metadata = change?.metadata;\nif (!message || !message.from) {\n  return [];\n}\nconst patientPhone = message.from;\nconst messageText = message.text?.body || message.caption || 'سلام عليكم';\nconst messageId = message.id;\nconst timestamp = message.timestamp;\nconst displayPhoneNumber = metadata?.display_phone_number;\nconst whatsappPhoneNumberId = metadata?.phone_number_id;\nreturn [{ json: { patientPhone, messageText, messageId, timestamp, displayPhoneNumber, whatsappPhoneNumberId } }];"
+      },
+      "name": "3. Extract Webhook Payload",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const staticData = $getWorkflowStaticData('global');\nstaticData.processedIds = staticData.processedIds || [];\nconst item = items[0].json;\nconst msgId = item.messageId;\nif (staticData.processedIds.includes(msgId)) {\n  return [];\n}\nstaticData.processedIds.push(msgId);\nif (staticData.processedIds.length > 500) {\n  staticData.processedIds.shift();\n}\nreturn items;"
+      },
+      "name": "4. Idempotency & Deduplication Filter",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{($env.TABIBI_API_URL || 'http://localhost:3000') + '/api/doctors'}}",
+        "options": {}
+      },
+      "name": "5. Resolve Doctor Context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const doctors = items[0].json.doctors || [];\nconst webhookData = $node['4. Idempotency & Deduplication Filter'].json;\nlet doctor = doctors.find(d => d.whatsappNumber === webhookData.patientPhone || d.whatsappNumber === webhookData.displayPhoneNumber);\nif (!doctor && doctors.length > 0) {\n  doctor = doctors[0];\n}\nreturn [{ json: { doctorId: doctor ? doctor.id : '', doctorName: doctor ? doctor.name : 'د. أحمد محمد', patientPhone: webhookData.patientPhone, messageText: webhookData.messageText, messageId: webhookData.messageId, whatsappPhoneNumberId: webhookData.whatsappPhoneNumberId } }];"
+      },
+      "name": "Select Active Doctor",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1080, 300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "={{($env.TABIBI_API_URL || 'http://localhost:3000') + '/api/simulator/send'}}",
+        "options": {},
+        "jsonParameters": true,
+        "bodyParametersJson": "={\n  \"doctorId\": \"{{$json.doctorId}}\",\n  \"patientPhone\": \"{{$json.patientPhone}}\",\n  \"message\": \"{{$json.messageText}}\"\n}"
+      },
+      "name": "6. Process Pipeline (Intent, State Machine, FAQ, LLM, DB)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [1300, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const res = items[0].json;\nconst prev = $node['Select Active Doctor'].json;\nconst output = res.output || {};\nconst replyText = output.replyText || 'أهلاً بحضرتك! سيقوم مساعد الاستقبال بالرد عليك فوراً.';\nreturn [{ json: { replyText, handledBy: output.handledBy || 'RULE_TEMPLATE', intent: output.intent || 'UNKNOWN', patientPhone: prev.patientPhone, doctorId: prev.doctorId, doctorName: prev.doctorName, whatsappPhoneNumberId: prev.whatsappPhoneNumberId } }];"
+      },
+      "name": "7. Format Egyptian Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1520, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{!!$env.WHATSAPP_ACCESS_TOKEN}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Is Live Meta Token Available?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1740, 300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "={{'https://graph.facebook.com/v19.0/' + ($json.whatsappPhoneNumberId || $env.WHATSAPP_PHONE_NUMBER_ID || '10000000000') + '/messages'}}",
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.WHATSAPP_ACCESS_TOKEN}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "jsonParameters": true,
+        "bodyParametersJson": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{$json.patientPhone}}\",\n  \"type\": \"text\",\n  \"text\": { \"body\": \"{{$json.replyText}}\" }\n}"
+      },
+      "name": "8. Send Outbound WhatsApp Reply (Meta Graph API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [1960, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "const item = items[0].json;\nconsole.log(`[LOCAL DEV MODE] Reply sent to ${item.patientPhone} for ${item.doctorName}:`);\nconsole.log(item.replyText);\nreturn items;"
+      },
+      "name": "Local Dev Logger Fallback",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1960, 420]
+    }
+  ],
+  "connections": {
+    "1. Inbound WhatsApp Webhook": {
+      "main": [
+        [
+          {
+            "node": "3. Extract Webhook Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Meta Hub Verification Webhook (GET)": {
+      "main": [
+        [
+          {
+            "node": "Verify Meta Webhook Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Extract Webhook Payload": {
+      "main": [
+        [
+          {
+            "node": "4. Idempotency & Deduplication Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. Idempotency & Deduplication Filter": {
+      "main": [
+        [
+          {
+            "node": "5. Resolve Doctor Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. Resolve Doctor Context": {
+      "main": [
+        [
+          {
+            "node": "Select Active Doctor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Active Doctor": {
+      "main": [
+        [
+          {
+            "node": "6. Process Pipeline (Intent, State Machine, FAQ, LLM, DB)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6. Process Pipeline (Intent, State Machine, FAQ, LLM, DB)": {
+      "main": [
+        [
+          {
+            "node": "7. Format Egyptian Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7. Format Egyptian Response": {
+      "main": [
+        [
+          {
+            "node": "Is Live Meta Token Available?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Live Meta Token Available?": {
+      "main": [
+        [
+          {
+            "node": "8. Send Outbound WhatsApp Reply (Meta Graph API)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Local Dev Logger Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
