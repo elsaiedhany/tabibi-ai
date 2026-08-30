@@ -361,8 +361,35 @@ export async function processStateMachine(
           return resetToIdle(conversationId);
         }
 
-        const available = await isSlotAvailable(doctorId, selectedDate, selectedTime);
-        if (!available) {
+        const bookingResult = await db.$transaction(async (tx) => {
+          const existingSlot = await tx.appointment.findFirst({
+            where: {
+              doctorId,
+              date: selectedDate,
+              time: selectedTime,
+              status: { in: ["SCHEDULED", "RESCHEDULED"] },
+            },
+          });
+
+          if (existingSlot) {
+            return null;
+          }
+
+          return await tx.appointment.create({
+            data: {
+              doctorId,
+              patientId,
+              serviceId: currentServiceId,
+              conversationId,
+              date: selectedDate,
+              time: selectedTime,
+              status: AppointmentStatus.SCHEDULED,
+            },
+            include: { service: true, doctor: true },
+          });
+        });
+
+        if (!bookingResult) {
           await db.conversation.update({
             where: { id: conversationId },
             data: { state: ConversationState.SELECT_TIME },
@@ -374,18 +401,7 @@ export async function processStateMachine(
           };
         }
 
-        const app = await db.appointment.create({
-          data: {
-            doctorId,
-            patientId,
-            serviceId: currentServiceId,
-            conversationId,
-            date: selectedDate,
-            time: selectedTime,
-            status: AppointmentStatus.SCHEDULED,
-          },
-          include: { service: true, doctor: true },
-        });
+        const app = bookingResult;
 
         await db.conversation.update({
           where: { id: conversationId },

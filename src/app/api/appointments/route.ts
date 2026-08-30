@@ -93,18 +93,46 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "المريض غير تابع لهذا الطبيب" }, { status: 403 });
   }
 
-  const appointment = await db.appointment.create({
-    data: {
-      doctorId: targetDoctorId,
-      patientId: targetPatientId,
-      serviceId,
-      locationId,
-      date,
-      time,
-      notes,
-    },
-    include: { patient: true, service: true, location: true },
+  // Atomic Double Booking Check & Creation Transaction
+  const appointment = await db.$transaction(async (tx) => {
+    const existingSlot = await tx.appointment.findFirst({
+      where: {
+        doctorId: targetDoctorId,
+        date,
+        time,
+        status: { in: ["SCHEDULED", "RESCHEDULED"] },
+      },
+    });
+
+    if (existingSlot) {
+      throw new Error("DOUBLE_BOOKING_SLOT_TAKEN");
+    }
+
+    return await tx.appointment.create({
+      data: {
+        doctorId: targetDoctorId,
+        patientId: targetPatientId,
+        serviceId,
+        locationId,
+        date,
+        time,
+        notes,
+      },
+      include: { patient: true, service: true, location: true },
+    });
+  }).catch((err) => {
+    if (err.message === "DOUBLE_BOOKING_SLOT_TAKEN") {
+      return null;
+    }
+    throw err;
   });
+
+  if (!appointment) {
+    return NextResponse.json(
+      { error: "هذا الموعد حُجز بالفعل من مريض آخر. يرجى اختيار موعد آخر متاح." },
+      { status: 409 }
+    );
+  }
 
   await logAuditEvent({
     doctorId: targetDoctorId,
