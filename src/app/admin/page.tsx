@@ -82,6 +82,26 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
+        {/* Pending Registration Applications Quick Action Banner */}
+        <div className="p-5 rounded-2xl bg-gradient-to-r from-brand-950 via-slate-900 to-teal-950 border border-brand-500/30 flex items-center justify-between shadow-xl">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-brand-500/20 text-brand-300 font-bold border border-brand-500/30">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-white text-sm">طلبات اشتراك الأطباء والعيادات الجديدة</h3>
+              <p className="text-slate-300 text-xs mt-0.5">مراجعة طلبات التسجيل، تحديد الباقة (STARTER / PRO / ENTERPRISE)، واعتماد التفعيل.</p>
+            </div>
+          </div>
+
+          <Link
+            href="/admin/applications"
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-teal-500 hover:from-brand-500 hover:to-teal-400 text-white font-extrabold text-xs shadow-lg shadow-brand-600/20 flex items-center gap-2 shrink-0"
+          >
+            <span>مراجعة الطلبات ←</span>
+          </Link>
+        </div>
+
         {/* Monitoring KPIs Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="glass-card p-5 rounded-2xl border border-slate-800 space-y-2">

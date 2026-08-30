@@ -213,11 +213,19 @@ export default function LoginPage() {
                   </span>
                 ) : (
                   <>
-                    <span>دخول اللوحة</span>
+                    <span>تسجيل الدخول</span>
                     <ArrowRight className="w-4 h-4 rotate-180" />
                   </>
                 )}
               </button>
+
+              {/* Registration Link */}
+              <div className="pt-3 text-center border-t border-slate-800/80">
+                <span className="text-xs text-slate-400">لسه معندكش حساب؟ </span>
+                <Link href="/register" className="text-xs font-bold text-teal-400 hover:text-teal-300">
+                  ابدأ مع طبيبي AI ←
+                </Link>
+              </div>
             </form>
           </div>
         </div>
