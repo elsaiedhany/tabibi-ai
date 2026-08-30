@@ -6,6 +6,9 @@ const JWT_SECRET = new TextEncoder().encode(
 );
 
 const protectedRoutes = [
+  "/admin",
+  "/doctor",
+  "/staff",
   "/dashboard",
   "/simulator",
   "/conversations",
@@ -33,7 +36,27 @@ export async function middleware(req: NextRequest) {
     }
 
     try {
-      await jwtVerify(token, JWT_SECRET);
+      const verified = await jwtVerify(token, JWT_SECRET);
+      const payload = verified.payload as any;
+      const userRole = payload?.role;
+
+      // 1. Redirect legacy /dashboard to role home
+      if (pathname === "/dashboard") {
+        if (userRole === "SUPER_ADMIN") return NextResponse.redirect(new URL("/admin", req.url));
+        if (userRole === "STAFF") return NextResponse.redirect(new URL("/staff", req.url));
+        return NextResponse.redirect(new URL("/doctor", req.url));
+      }
+
+      // 2. Strict Role Route Enforcements
+      if (pathname.startsWith("/admin") && userRole !== "SUPER_ADMIN") {
+        const homeUrl = userRole === "STAFF" ? "/staff" : "/doctor";
+        return NextResponse.redirect(new URL(homeUrl, req.url));
+      }
+
+      if (pathname.startsWith("/doctor") && userRole === "STAFF") {
+        return NextResponse.redirect(new URL("/staff", req.url));
+      }
+
       return NextResponse.next();
     } catch (err) {
       const loginUrl = new URL("/login", req.url);
@@ -48,6 +71,9 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
+    "/admin/:path*",
+    "/doctor/:path*",
+    "/staff/:path*",
     "/dashboard/:path*",
     "/simulator/:path*",
     "/conversations/:path*",
