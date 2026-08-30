@@ -62,7 +62,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "حساب الطبيب موقوف حالياً" }, { status: 403 });
     }
 
-    // 3. Process Patient Message strictly scoped to resolved Doctor context
+    // 3. Server-Side Subscription Check
+    const { getDoctorSubscriptionStatus } = await import("@/lib/subscription");
+    const subStatus = await getDoctorSubscriptionStatus(doctor.id);
+
+    if (!subStatus.allowed) {
+      await logAuditEvent({
+        doctorId: doctor.id,
+        action: "WHATSAPP_WEBHOOK_SUBSCRIPTION_EXPIRED",
+        details: `Webhook message from ${parsed.from} ignored due to subscription status: ${subStatus.status}`,
+      });
+      return NextResponse.json({ error: "اشتراك الطبيب منتهي أو موقوف", status: subStatus.status }, { status: 402 });
+    }
+
+    // 4. Process Patient Message strictly scoped to resolved Doctor context
     const result = await processIncomingPatientMessage({
       doctorId: doctor.id,
       patientPhone: parsed.from,

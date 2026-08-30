@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { authenticateApiRequest, isDoctorAccessAllowed } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
+import { getDoctorSubscriptionStatus } from "@/lib/subscription";
 import { Role } from "@/types/index";
 
 export async function GET(req: NextRequest) {
@@ -52,6 +53,15 @@ export async function POST(req: NextRequest) {
 
   if (!isDoctorAccessAllowed(session!, targetDoctorId)) {
     return NextResponse.json({ error: "غير مصرح بتسجيل موعد لهذا الطبيب" }, { status: 403 });
+  }
+
+  // Server-side Subscription Enforcement
+  const subStatus = await getDoctorSubscriptionStatus(targetDoctorId);
+  if (!subStatus.allowed) {
+    return NextResponse.json(
+      { error: subStatus.message || "اشتراك العيادة منتهي أو موقوف. لا يمكن إضافة مواعيد جديدة." },
+      { status: 402 }
+    );
   }
 
   let targetPatientId = patientId;

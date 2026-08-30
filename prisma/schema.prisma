@@ -379,13 +379,13 @@ model AnalyticsEvent {
 
 model AuditLog {
   id        String   @id @default(uuid())
-  doctorId  String
+  doctorId  String?
   userId    String?
   action    String
   details   String?
   timestamp DateTime @default(now())
 
-  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  doctor    Doctor?  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([doctorId])
