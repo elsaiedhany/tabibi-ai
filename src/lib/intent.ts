@@ -329,3 +329,46 @@ export function detectIntent(text: string): StructuredIntentResult {
     needsClarification: false,
   };
 }
+
+export function parseEgyptianRelativeDate(text: string): string | null {
+  if (!text) return null;
+  const norm = normalizeText(text);
+  const today = new Date();
+
+  if (norm.includes("النهار ده") || norm.includes("النهاردة") || norm.includes("اليوم")) {
+    return today.toISOString().split("T")[0];
+  }
+  if (norm.includes("بكره") || norm.includes("بكرة") || norm.includes("غدا")) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split("T")[0];
+  }
+  if (norm.includes("بعد بكره") || norm.includes("بعد بكرة")) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + 2);
+    return d.toISOString().split("T")[0];
+  }
+
+  const daysMap: Record<string, number> = {
+    "الاحد": 0, "الأحد": 0, "احد": 0,
+    "الاثنين": 1, "الإثنين": 1, "اتنين": 1,
+    "الثلاثاء": 2, "تلات": 2, "الثلاثا": 2,
+    "الاربعاء": 3, "الأربعاء": 3, "اربع": 3,
+    "الخميس": 4, "خميس": 4,
+    "الجمعة": 5, "الجمعه": 5, "جمعة": 5,
+    "السبت": 6, "سبت": 6,
+  };
+
+  for (const [dayName, dayIndex] of Object.entries(daysMap)) {
+    if (norm.includes(dayName)) {
+      const currentDay = today.getDay();
+      let diff = dayIndex - currentDay;
+      if (diff <= 0) diff += 7;
+      const targetDate = new Date(today);
+      targetDate.setDate(today.getDate() + diff);
+      return targetDate.toISOString().split("T")[0];
+    }
+  }
+
+  return null;
+}
