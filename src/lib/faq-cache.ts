@@ -93,7 +93,7 @@ export async function matchFaqOrKnowledgeBase(
   for (const kb of kbEntries) {
     const normTitle = normalizeText(kb.title);
     const normContent = normalizeText(kb.content);
-    const normTags = kb.tags ? normalizeText(kb.tags) : "";
+    const normTags = (kb as any).tags ? normalizeText((kb as any).tags) : "";
 
     if (normQ.includes(normTitle) || normTitle.includes(normQ) || (normTags && normTags.includes(normQ))) {
       return {
