@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { authenticateApiRequest } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 
+import { sendEmailNotification } from "@/lib/email";
+
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, errorResponse } = await authenticateApiRequest(req);
   if (errorResponse) return errorResponse;
@@ -45,6 +47,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       action: "APPLICATION_REJECTED",
       details: `Application rejected by ${session!.email}. Reason: ${reason}`,
     });
+
+    await sendEmailNotification({
+      to: application.user.email,
+      subject: "تحديث بشأن طلب انضمامك إلى طبيبي AI",
+      template: "APPLICATION_REJECTED",
+      data: { reason },
+    }).catch(console.error);
 
     return NextResponse.json({
       success: true,

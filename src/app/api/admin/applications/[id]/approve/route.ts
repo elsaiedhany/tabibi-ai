@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { authenticateApiRequest } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 
+import { sendEmailNotification } from "@/lib/email";
+
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, errorResponse } = await authenticateApiRequest(req);
   if (errorResponse) return errorResponse;
@@ -152,6 +154,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       action: "APPLICATION_APPROVED",
       details: `Application approved by ${session!.email}. Plan: ${plan}, Status: ${subStatus}`,
     });
+
+    await sendEmailNotification({
+      to: application.user.email,
+      subject: "مرحباً بك في طبيبي! تم اعتماد حسابك وتفعيل عيادتك 🚀",
+      template: "APPLICATION_APPROVED",
+      data: { doctorName: result.doctor.name, plan },
+    }).catch(console.error);
 
     return NextResponse.json({
       success: true,

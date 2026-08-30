@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
 
     await logAuditEvent({ doctorId, userId: user.id, action: "LOGIN", details: `Role: ${user.role}` });
 
-    const redirectTo = user.role === Role.SUPER_ADMIN ? "/doctors" : user.role === Role.STAFF ? "/appointments" : "/dashboard";
+    const redirectTo = user.role === Role.SUPER_ADMIN ? "/admin" : user.role === Role.STAFF ? "/staff" : "/doctor";
 
     const res = NextResponse.json({
       success: true,
