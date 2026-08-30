@@ -24,6 +24,7 @@ export default function DoctorDashboardPage() {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [conversations, setConversations] = useState<any[]>([]);
   const [doctorSettings, setDoctorSettings] = useState<any>(null);
+  const [subscription, setSubscription] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -31,19 +32,22 @@ export default function DoctorDashboardPage() {
     setLoading(true);
     setError("");
     try {
-      const [appRes, convRes, setRes] = await Promise.all([
+      const [appRes, convRes, setRes, subRes] = await Promise.all([
         fetch("/api/appointments"),
         fetch("/api/conversations"),
         fetch("/api/settings"),
+        fetch("/api/subscription"),
       ]);
 
       const appData = await appRes.json();
       const convData = await convRes.json();
       const setData = await setRes.json();
+      const subData = await subRes.json();
 
       if (appData.appointments) setAppointments(appData.appointments);
       if (convData.conversations) setConversations(convData.conversations);
       if (setData.doctor?.settings) setDoctorSettings(setData.doctor.settings);
+      if (subData.subscription) setSubscription(subData.subscription);
     } catch (err) {
       setError("حصل خطأ أثناء تحميل بيانات العيادة. اضغط إعادة المحاولة.");
     } finally {
@@ -93,6 +97,26 @@ export default function DoctorDashboardPage() {
             <button onClick={fetchData} className="px-3 py-1 bg-rose-500/20 rounded-lg text-rose-200 hover:bg-rose-500/30">
               إعادة المحاولة
             </button>
+          </div>
+        )}
+
+        {/* Subscription Status Banner */}
+        {subscription && subscription.status === "TRIAL" && (
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 flex items-center justify-between text-xs font-bold">
+            <div className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-amber-400" />
+              <span>الفترة التجريبية مجانية: متبقي منها {subscription.daysRemaining || 7} أيام (باقة {subscription.plan || "PRO"})</span>
+            </div>
+            <span className="text-[11px] text-amber-400/80">تتجدد تلقائياً بالتنسيق مع إدارة المنصة</span>
+          </div>
+        )}
+
+        {subscription && (subscription.status === "EXPIRED" || subscription.status === "SUSPENDED") && (
+          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-center justify-between text-xs font-bold">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-rose-400" />
+              <span>اشتراك العيادة منتهي أو موقوف حالياً. يرجى للتجديد والتفعيل التواصل مع الإدارة.</span>
+            </div>
           </div>
         )}
 
