@@ -1,11 +1,10 @@
 const { execSync } = require("child_process");
 
 try {
-  console.log("🚀 Executing prisma migrate deploy...");
-  const output = execSync("npx prisma migrate deploy", { encoding: "utf8", stdio: "pipe" });
-  console.log(output);
+  console.log("🚀 Executing prisma migrate deploy with inherited stdio...");
+  execSync("npx prisma migrate deploy", { stdio: "inherit" });
+  console.log("✅ Prisma migrations deployed successfully!");
 } catch (err) {
-  console.error("❌ MIGRATION DEPLOY ERROR STDOUT:\n", err.stdout);
-  console.error("❌ MIGRATION DEPLOY ERROR STDERR:\n", err.stderr);
+  console.error("❌ MIGRATION DEPLOYMENT FAILED!");
   process.exit(1);
 }
