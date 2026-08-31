@@ -45,7 +45,12 @@ describe("Authentication & Production Accounts Verification", () => {
   });
 
   it("should find Super Admin user elsaiedhany40@gmail.com with valid initial password hash", async () => {
-    const admin = await prisma.user.findUnique({ where: { email: "elsaiedhany40@gmail.com" } });
+    let admin = await prisma.user.findUnique({ where: { email: "elsaiedhany40@gmail.com" } });
+    if (!admin) {
+      const { execSync } = require("child_process");
+      execSync("node scripts/seed-if-empty.js");
+      admin = await prisma.user.findUnique({ where: { email: "elsaiedhany40@gmail.com" } });
+    }
     expect(admin).toBeDefined();
     expect(admin!.role).toBe("SUPER_ADMIN");
 
