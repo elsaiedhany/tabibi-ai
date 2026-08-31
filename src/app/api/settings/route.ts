@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
       ? {
           ...doctor.settings,
           whatsappAccessToken: doctor.settings.whatsappAccessToken ? "••••••••" : null,
+          whatsappVerifyToken: doctor.settings.whatsappVerifyToken ? "••••••••" : null,
         }
       : null,
   };
@@ -97,7 +98,7 @@ export async function PATCH(req: NextRequest) {
       ...(handoffTemplate && { handoffTemplate }),
       ...(whatsappAccessToken && whatsappAccessToken !== "••••••••" && { whatsappAccessToken }),
       ...(whatsappPhoneNumberId && { whatsappPhoneNumberId }),
-      ...(whatsappVerifyToken && { whatsappVerifyToken }),
+      ...(whatsappVerifyToken && whatsappVerifyToken !== "••••••••" && { whatsappVerifyToken }),
     },
     create: {
       doctorId: targetDoctorId,

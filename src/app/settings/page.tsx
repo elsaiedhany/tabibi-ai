@@ -250,10 +250,10 @@ export default function SettingsPage() {
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">Webhook Verify Token</label>
               <input
-                type="text"
+                type="password"
                 value={whatsappVerifyToken}
                 onChange={(e) => setWhatsappVerifyToken(e.target.value)}
-                placeholder="tabibi_verify_secret"
+                placeholder="أدخل توكن التحقق (Webhook Verify Token)"
                 className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm font-mono"
               />
             </div>

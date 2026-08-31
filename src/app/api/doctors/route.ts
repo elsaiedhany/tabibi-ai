@@ -9,19 +9,21 @@ export async function GET(req: NextRequest) {
   if (errorResponse) return errorResponse;
 
   const { searchParams } = new URL(req.url);
-  const requestedId = searchParams.get("id") || session!.doctorId;
+  const paramId = searchParams.get("id");
 
-  if (requestedId) {
-    if (!isDoctorAccessAllowed(session!, requestedId)) {
+  // 1. If specific doctor ID is explicitly requested via query parameter ?id=...
+  if (paramId) {
+    if (!isDoctorAccessAllowed(session!, paramId)) {
       return NextResponse.json({ error: "غير مصرح بالوصول لبيانات هذا الطبيب" }, { status: 403 });
     }
 
     const doctor = await db.doctor.findUnique({
-      where: { id: requestedId },
+      where: { id: paramId },
       include: {
         services: true,
         locations: true,
         settings: true,
+        subscriptions: { orderBy: { createdAt: "desc" }, take: 1 },
       },
     });
 
@@ -32,15 +34,36 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ doctor });
   }
 
-  // Super Admin can view list of all doctors
+  // 2. If user is DOCTOR or STAFF, return their single assigned doctor profile
   if (session!.role !== Role.SUPER_ADMIN) {
-    return NextResponse.json({ error: "غير مصرح بالوصول لقائمة الأطباء الكاملة" }, { status: 403 });
+    if (!session!.doctorId) {
+      return NextResponse.json({ error: "معرف الطبيب غير مرتبط بالحساب" }, { status: 400 });
+    }
+
+    const doctor = await db.doctor.findUnique({
+      where: { id: session!.doctorId },
+      include: {
+        services: true,
+        locations: true,
+        settings: true,
+        subscriptions: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+    });
+
+    if (!doctor) {
+      return NextResponse.json({ error: "الطبيب غير موجود" }, { status: 404 });
+    }
+
+    return NextResponse.json({ doctor });
   }
 
+  // 3. Super Admin view: return complete list of all registered doctors in system
   const doctors = await db.doctor.findMany({
     include: {
       services: true,
       locations: true,
+      settings: true,
+      subscriptions: { orderBy: { createdAt: "desc" }, take: 1 },
     },
     orderBy: { createdAt: "desc" },
   });
