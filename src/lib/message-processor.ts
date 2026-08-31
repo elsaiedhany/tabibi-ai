@@ -38,13 +38,23 @@ export async function processIncomingPatientMessage(
   });
 
   if (!patient) {
-    patient = await db.patient.create({
-      data: {
-        doctorId,
-        whatsappNumber: patientPhone,
-        name: `مريض (${patientPhone.slice(-4)})`,
-      },
-    });
+    try {
+      patient = await db.patient.create({
+        data: {
+          doctorId,
+          whatsappNumber: patientPhone,
+          name: `مريض (${patientPhone.slice(-4)})`,
+        },
+      });
+    } catch (err: any) {
+      if (err?.code === "P2002") {
+        patient = (await db.patient.findUnique({
+          where: { doctorId_whatsappNumber: { doctorId, whatsappNumber: patientPhone } },
+        }))!;
+      } else {
+        throw err;
+      }
+    }
   }
 
   // 2. Identify / Load Conversation State for Doctor
@@ -53,14 +63,20 @@ export async function processIncomingPatientMessage(
   });
 
   if (!conversation) {
-    conversation = await db.conversation.create({
-      data: {
-        doctorId,
-        patientId: patient.id,
-        state: ConversationState.IDLE,
-        handoffStatus: HandoffStatus.AI_ACTIVE,
-      },
-    });
+    try {
+      conversation = await db.conversation.create({
+        data: {
+          doctorId,
+          patientId: patient.id,
+          state: ConversationState.IDLE,
+          handoffStatus: HandoffStatus.AI_ACTIVE,
+        },
+      });
+    } catch (err: any) {
+      conversation = (await db.conversation.findFirst({
+        where: { doctorId, patientId: patient.id },
+      }))!;
+    }
   }
 
   const normText = normalizeText(rawText);

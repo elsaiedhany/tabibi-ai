@@ -11,6 +11,10 @@ describe("🏥 Doctor Self-Registration, Onboarding & Admin Approval Workflow", 
   let adminUserId: string;
 
   beforeAll(async () => {
+    // Clean pre-existing test email or doctor
+    await prisma.doctor.deleteMany({ where: { OR: [{ email: testEmail }, { whatsappNumber: "201099887766" }] } });
+    await prisma.user.deleteMany({ where: { email: testEmail } });
+
     // Ensure test admin exists
     const hashed = await bcrypt.hash("442007Hany", 10);
     const admin = await prisma.user.upsert({
