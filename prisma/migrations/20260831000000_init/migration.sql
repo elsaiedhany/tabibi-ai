@@ -1,5 +1,5 @@
 -- CreateTable
-CREATE TABLE "doctors" (
+CREATE TABLE IF NOT EXISTS "doctors" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "title" TEXT NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE "doctors" (
 );
 
 -- CreateTable
-CREATE TABLE "locations" (
+CREATE TABLE IF NOT EXISTS "locations" (
     "id" TEXT NOT NULL,
     "doctorId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE "locations" (
 );
 
 -- CreateTable
-CREATE TABLE "users" (
+CREATE TABLE IF NOT EXISTS "users" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -56,7 +56,7 @@ CREATE TABLE "users" (
 );
 
 -- CreateTable
-CREATE TABLE "password_reset_tokens" (
+CREATE TABLE IF NOT EXISTS "password_reset_tokens" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "tokenHash" TEXT NOT NULL,
@@ -68,7 +68,7 @@ CREATE TABLE "password_reset_tokens" (
 );
 
 -- CreateTable
-CREATE TABLE "doctor_applications" (
+CREATE TABLE IF NOT EXISTS "doctor_applications" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "doctorId" TEXT,
@@ -90,7 +90,7 @@ CREATE TABLE "doctor_applications" (
 );
 
 -- CreateTable
-CREATE TABLE "subscriptions" (
+CREATE TABLE IF NOT EXISTS "subscriptions" (
     "id" TEXT NOT NULL,
     "doctorId" TEXT NOT NULL,
     "plan" TEXT NOT NULL DEFAULT 'FREE_TRIAL',
@@ -107,7 +107,7 @@ CREATE TABLE "subscriptions" (
 );
 
 -- CreateTable
-CREATE TABLE "doctor_users" (
+CREATE TABLE IF NOT EXISTS "doctor_users" (
     "id" TEXT NOT NULL,
     "doctorId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -118,7 +118,7 @@ CREATE TABLE "doctor_users" (
 );
 
 -- CreateTable
-CREATE TABLE "services" (
+CREATE TABLE IF NOT EXISTS "services" (
     "id" TEXT NOT NULL,
     "doctorId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -134,7 +134,7 @@ CREATE TABLE "services" (
 );
 
 -- CreateTable
-CREATE TABLE "patients" (
+CREATE TABLE IF NOT EXISTS "patients" (
     "id" TEXT NOT NULL,
     "doctorId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -152,7 +152,7 @@ CREATE TABLE "patients" (
 );
 
 -- CreateTable
-CREATE TABLE "conversations" (
+CREATE TABLE IF NOT EXISTS "conversations" (
     "id" TEXT NOT NULL,
     "doctorId" TEXT NOT NULL,
     "patientId" TEXT NOT NULL,
@@ -171,7 +171,7 @@ CREATE TABLE "conversations" (
 );
 
 -- CreateTable
-CREATE TABLE "messages" (
+CREATE TABLE IF NOT EXISTS "messages" (
     "id" TEXT NOT NULL,
     "conversationId" TEXT NOT NULL,
     "sender" TEXT NOT NULL,
@@ -187,7 +187,7 @@ CREATE TABLE "messages" (
 );
 
 -- CreateTable
-CREATE TABLE "appointments" (
+CREATE TABLE IF NOT EXISTS "appointments" (
     "id" TEXT NOT NULL,
     "doctorId" TEXT NOT NULL,
     "patientId" TEXT NOT NULL,
@@ -208,7 +208,7 @@ CREATE TABLE "appointments" (
 );
 
 -- CreateTable
-CREATE TABLE "knowledge_base" (
+CREATE TABLE IF NOT EXISTS "knowledge_base" (
     "id" TEXT NOT NULL,
     "doctorId" TEXT NOT NULL,
     "category" TEXT NOT NULL,
@@ -222,7 +222,7 @@ CREATE TABLE "knowledge_base" (
 );
 
 -- CreateTable
-CREATE TABLE "faq_entries" (
+CREATE TABLE IF NOT EXISTS "faq_entries" (
     "id" TEXT NOT NULL,
     "doctorId" TEXT NOT NULL,
     "question" TEXT NOT NULL,
@@ -238,7 +238,7 @@ CREATE TABLE "faq_entries" (
 );
 
 -- CreateTable
-CREATE TABLE "reminders" (
+CREATE TABLE IF NOT EXISTS "reminders" (
     "id" TEXT NOT NULL,
     "doctorId" TEXT NOT NULL,
     "type" TEXT NOT NULL,
@@ -251,7 +251,7 @@ CREATE TABLE "reminders" (
 );
 
 -- CreateTable
-CREATE TABLE "doctor_settings" (
+CREATE TABLE IF NOT EXISTS "doctor_settings" (
     "id" TEXT NOT NULL,
     "doctorId" TEXT NOT NULL,
     "isAiEnabled" BOOLEAN NOT NULL DEFAULT true,
@@ -270,7 +270,7 @@ CREATE TABLE "doctor_settings" (
 );
 
 -- CreateTable
-CREATE TABLE "ai_usage" (
+CREATE TABLE IF NOT EXISTS "ai_usage" (
     "id" TEXT NOT NULL,
     "doctorId" TEXT NOT NULL,
     "conversationId" TEXT,
@@ -286,7 +286,7 @@ CREATE TABLE "ai_usage" (
 );
 
 -- CreateTable
-CREATE TABLE "analytics_events" (
+CREATE TABLE IF NOT EXISTS "analytics_events" (
     "id" TEXT NOT NULL,
     "doctorId" TEXT NOT NULL,
     "eventType" TEXT NOT NULL,
@@ -297,7 +297,7 @@ CREATE TABLE "analytics_events" (
 );
 
 -- CreateTable
-CREATE TABLE "audit_logs" (
+CREATE TABLE IF NOT EXISTS "audit_logs" (
     "id" TEXT NOT NULL,
     "doctorId" TEXT,
     "userId" TEXT,
@@ -309,163 +309,139 @@ CREATE TABLE "audit_logs" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "doctors_whatsappNumber_key" ON "doctors"("whatsappNumber");
+CREATE UNIQUE INDEX IF NOT EXISTS "doctors_whatsappNumber_key" ON "doctors"("whatsappNumber");
+CREATE INDEX IF NOT EXISTS "locations_doctorId_idx" ON "locations"("doctorId");
+CREATE UNIQUE INDEX IF NOT EXISTS "users_email_key" ON "users"("email");
+CREATE UNIQUE INDEX IF NOT EXISTS "password_reset_tokens_tokenHash_key" ON "password_reset_tokens"("tokenHash");
+CREATE INDEX IF NOT EXISTS "password_reset_tokens_userId_idx" ON "password_reset_tokens"("userId");
+CREATE INDEX IF NOT EXISTS "doctor_applications_userId_idx" ON "doctor_applications"("userId");
+CREATE INDEX IF NOT EXISTS "doctor_applications_status_idx" ON "doctor_applications"("status");
+CREATE INDEX IF NOT EXISTS "subscriptions_doctorId_idx" ON "subscriptions"("doctorId");
+CREATE INDEX IF NOT EXISTS "subscriptions_status_idx" ON "subscriptions"("status");
+CREATE UNIQUE INDEX IF NOT EXISTS "doctor_users_doctorId_userId_key" ON "doctor_users"("doctorId", "userId");
+CREATE INDEX IF NOT EXISTS "services_doctorId_idx" ON "services"("doctorId");
+CREATE INDEX IF NOT EXISTS "patients_doctorId_idx" ON "patients"("doctorId");
+CREATE UNIQUE INDEX IF NOT EXISTS "patients_doctorId_whatsappNumber_key" ON "patients"("doctorId", "whatsappNumber");
+CREATE INDEX IF NOT EXISTS "conversations_doctorId_idx" ON "conversations"("doctorId");
+CREATE INDEX IF NOT EXISTS "conversations_patientId_idx" ON "conversations"("patientId");
+CREATE INDEX IF NOT EXISTS "messages_conversationId_idx" ON "messages"("conversationId");
+CREATE INDEX IF NOT EXISTS "appointments_doctorId_idx" ON "appointments"("doctorId");
+CREATE INDEX IF NOT EXISTS "appointments_patientId_idx" ON "appointments"("patientId");
+CREATE INDEX IF NOT EXISTS "appointments_doctorId_date_idx" ON "appointments"("doctorId", "date");
+CREATE INDEX IF NOT EXISTS "appointments_doctorId_status_idx" ON "appointments"("doctorId", "status");
+CREATE INDEX IF NOT EXISTS "knowledge_base_doctorId_idx" ON "knowledge_base"("doctorId");
+CREATE INDEX IF NOT EXISTS "faq_entries_doctorId_idx" ON "faq_entries"("doctorId");
+CREATE INDEX IF NOT EXISTS "reminders_doctorId_idx" ON "reminders"("doctorId");
+CREATE UNIQUE INDEX IF NOT EXISTS "doctor_settings_doctorId_key" ON "doctor_settings"("doctorId");
+CREATE INDEX IF NOT EXISTS "ai_usage_doctorId_idx" ON "ai_usage"("doctorId");
+CREATE INDEX IF NOT EXISTS "analytics_events_doctorId_idx" ON "analytics_events"("doctorId");
+CREATE INDEX IF NOT EXISTS "audit_logs_doctorId_idx" ON "audit_logs"("doctorId");
 
--- CreateIndex
-CREATE INDEX "locations_doctorId_idx" ON "locations"("doctorId");
+-- AddForeignKey safely
+DO $$ BEGIN
+    ALTER TABLE "locations" ADD CONSTRAINT "locations_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+DO $$ BEGIN
+    ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tokens_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE UNIQUE INDEX "password_reset_tokens_tokenHash_key" ON "password_reset_tokens"("tokenHash");
+DO $$ BEGIN
+    ALTER TABLE "doctor_applications" ADD CONSTRAINT "doctor_applications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "password_reset_tokens_userId_idx" ON "password_reset_tokens"("userId");
+DO $$ BEGIN
+    ALTER TABLE "doctor_applications" ADD CONSTRAINT "doctor_applications_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "doctor_applications_userId_idx" ON "doctor_applications"("userId");
+DO $$ BEGIN
+    ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "doctor_applications_status_idx" ON "doctor_applications"("status");
+DO $$ BEGIN
+    ALTER TABLE "doctor_users" ADD CONSTRAINT "doctor_users_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "subscriptions_doctorId_idx" ON "subscriptions"("doctorId");
+DO $$ BEGIN
+    ALTER TABLE "doctor_users" ADD CONSTRAINT "doctor_users_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "subscriptions_status_idx" ON "subscriptions"("status");
+DO $$ BEGIN
+    ALTER TABLE "services" ADD CONSTRAINT "services_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE UNIQUE INDEX "doctor_users_doctorId_userId_key" ON "doctor_users"("doctorId", "userId");
+DO $$ BEGIN
+    ALTER TABLE "patients" ADD CONSTRAINT "patients_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "services_doctorId_idx" ON "services"("doctorId");
+DO $$ BEGIN
+    ALTER TABLE "conversations" ADD CONSTRAINT "conversations_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "patients_doctorId_idx" ON "patients"("doctorId");
+DO $$ BEGIN
+    ALTER TABLE "conversations" ADD CONSTRAINT "conversations_patientId_fkey" FOREIGN KEY ("patientId") REFERENCES "patients"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE UNIQUE INDEX "patients_doctorId_whatsappNumber_key" ON "patients"("doctorId", "whatsappNumber");
+DO $$ BEGIN
+    ALTER TABLE "conversations" ADD CONSTRAINT "conversations_locationId_fkey" FOREIGN KEY ("locationId") REFERENCES "locations"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "conversations_doctorId_idx" ON "conversations"("doctorId");
+DO $$ BEGIN
+    ALTER TABLE "messages" ADD CONSTRAINT "messages_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "conversations_patientId_idx" ON "conversations"("patientId");
+DO $$ BEGIN
+    ALTER TABLE "appointments" ADD CONSTRAINT "appointments_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "messages_conversationId_idx" ON "messages"("conversationId");
+DO $$ BEGIN
+    ALTER TABLE "appointments" ADD CONSTRAINT "appointments_patientId_fkey" FOREIGN KEY ("patientId") REFERENCES "patients"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "appointments_doctorId_idx" ON "appointments"("doctorId");
+DO $$ BEGIN
+    ALTER TABLE "appointments" ADD CONSTRAINT "appointments_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "services"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "appointments_patientId_idx" ON "appointments"("patientId");
+DO $$ BEGIN
+    ALTER TABLE "appointments" ADD CONSTRAINT "appointments_locationId_fkey" FOREIGN KEY ("locationId") REFERENCES "locations"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "appointments_doctorId_date_idx" ON "appointments"("doctorId", "date");
+DO $$ BEGIN
+    ALTER TABLE "appointments" ADD CONSTRAINT "appointments_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "conversations"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "appointments_doctorId_status_idx" ON "appointments"("doctorId", "status");
+DO $$ BEGIN
+    ALTER TABLE "knowledge_base" ADD CONSTRAINT "knowledge_base_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "knowledge_base_doctorId_idx" ON "knowledge_base"("doctorId");
+DO $$ BEGIN
+    ALTER TABLE "faq_entries" ADD CONSTRAINT "faq_entries_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "faq_entries_doctorId_idx" ON "faq_entries"("doctorId");
+DO $$ BEGIN
+    ALTER TABLE "reminders" ADD CONSTRAINT "reminders_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "reminders_doctorId_idx" ON "reminders"("doctorId");
+DO $$ BEGIN
+    ALTER TABLE "doctor_settings" ADD CONSTRAINT "doctor_settings_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE UNIQUE INDEX "doctor_settings_doctorId_key" ON "doctor_settings"("doctorId");
+DO $$ BEGIN
+    ALTER TABLE "ai_usage" ADD CONSTRAINT "ai_usage_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "ai_usage_doctorId_idx" ON "ai_usage"("doctorId");
+DO $$ BEGIN
+    ALTER TABLE "ai_usage" ADD CONSTRAINT "ai_usage_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "conversations"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "analytics_events_doctorId_idx" ON "analytics_events"("doctorId");
+DO $$ BEGIN
+    ALTER TABLE "analytics_events" ADD CONSTRAINT "analytics_events_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- CreateIndex
-CREATE INDEX "audit_logs_doctorId_idx" ON "audit_logs"("doctorId");
+DO $$ BEGIN
+    ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- AddForeignKey
-ALTER TABLE "locations" ADD CONSTRAINT "locations_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tokens_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "doctor_applications" ADD CONSTRAINT "doctor_applications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "doctor_applications" ADD CONSTRAINT "doctor_applications_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "doctor_users" ADD CONSTRAINT "doctor_users_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "doctor_users" ADD CONSTRAINT "doctor_users_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "services" ADD CONSTRAINT "services_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "patients" ADD CONSTRAINT "patients_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "conversations" ADD CONSTRAINT "conversations_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "conversations" ADD CONSTRAINT "conversations_patientId_fkey" FOREIGN KEY ("patientId") REFERENCES "patients"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "conversations" ADD CONSTRAINT "conversations_locationId_fkey" FOREIGN KEY ("locationId") REFERENCES "locations"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "messages" ADD CONSTRAINT "messages_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "appointments" ADD CONSTRAINT "appointments_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "appointments" ADD CONSTRAINT "appointments_patientId_fkey" FOREIGN KEY ("patientId") REFERENCES "patients"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "appointments" ADD CONSTRAINT "appointments_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "services"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "appointments" ADD CONSTRAINT "appointments_locationId_fkey" FOREIGN KEY ("locationId") REFERENCES "locations"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "appointments" ADD CONSTRAINT "appointments_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "conversations"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "knowledge_base" ADD CONSTRAINT "knowledge_base_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "faq_entries" ADD CONSTRAINT "faq_entries_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "reminders" ADD CONSTRAINT "reminders_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "doctor_settings" ADD CONSTRAINT "doctor_settings_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "ai_usage" ADD CONSTRAINT "ai_usage_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "ai_usage" ADD CONSTRAINT "ai_usage_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "conversations"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "analytics_events" ADD CONSTRAINT "analytics_events_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_doctorId_fkey" FOREIGN KEY ("doctorId") REFERENCES "doctors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
