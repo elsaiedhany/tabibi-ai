@@ -301,6 +301,70 @@ export async function processIncomingPatientMessage(
     }
   }
 
+  // 9.5. Dynamic n8n Workflow Orchestration Layer
+  if (!finalReplyText && doctorSettings?.n8nEnabled) {
+    const { dispatchToN8nOrchestrator } = await import("./n8n");
+    const doctor = await db.doctor.findUnique({
+      where: { id: doctorId },
+      include: { services: true },
+    });
+
+    const n8nRes = await dispatchToN8nOrchestrator({
+      eventId: `event_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      clinicId: doctorId,
+      doctorId,
+      doctorName: doctor?.name || "الدكتور",
+      conversationId: conversation.id,
+      patientId: patient.id,
+      patientPhone,
+      patientName: patient.name || undefined,
+      whatsappMessageId: whatsappMessageId || `msg_${Date.now()}`,
+      messageText: rawText,
+      mediaType: input.mediaType,
+      tenantConfiguration: {
+        n8nWebhookUrl: doctorSettings.n8nWebhookUrl,
+        isAiEnabled: doctorSettings.isAiEnabled,
+        n8nEnabled: doctorSettings.n8nEnabled,
+        integrationStatus: doctorSettings.integrationStatus,
+        customSystemPrompt: doctorSettings.customSystemPrompt,
+        workingHours: doctor?.workingHours || "مواعيد العيادة",
+        services: doctor?.services.map((s) => ({ name: s.name, price: s.price })) || [],
+      },
+      timestamp: new Date().toISOString(),
+    });
+
+    if (n8nRes.success && n8nRes.replyText) {
+      finalReplyText = n8nRes.replyText;
+      handledBy = "LLM";
+
+      await db.analyticsEvent.create({
+        data: {
+          doctorId,
+          eventType: "N8N_ORCHESTRATED",
+          metadata: JSON.stringify({ intent: n8nRes.intent }),
+        },
+      });
+
+      await db.doctorSettings.update({
+        where: { doctorId },
+        data: {
+          lastHealthCheckAt: new Date(),
+          integrationStatus: "HEALTHY",
+          lastIntegrationError: null,
+        },
+      }).catch(() => {});
+    } else if (n8nRes.error) {
+      await db.doctorSettings.update({
+        where: { doctorId },
+        data: {
+          lastHealthCheckAt: new Date(),
+          integrationStatus: "ERROR",
+          lastIntegrationError: n8nRes.error.substring(0, 500),
+        },
+      }).catch(() => {});
+    }
+  }
+
   // 10. LLM Fallback (Used ONLY when all deterministic layers fail!)
   if (!finalReplyText) {
     const llmRes = await queryDoctorLlm({

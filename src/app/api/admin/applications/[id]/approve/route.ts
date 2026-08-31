@@ -128,6 +128,18 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         },
       });
 
+      // 5.1 Create Initial Doctor Settings & Dynamic Tenant Integration State
+      await tx.doctorSettings.create({
+        data: {
+          doctorId: doctor.id,
+          isAiEnabled: true,
+          n8nEnabled: false,
+          integrationStatus: "READY",
+          greetingTemplate: `أهلاً بحضرتك 👋 أنا مريم، المساعدة الخاصة بـ ${doctor.name}. إزاي أقدر أساعدك؟`,
+          workingHoursTemplate: `مواعيد ${doctor.name}: ${workingHours}.`,
+        },
+      });
+
       // 6. Activate User Account
       await tx.user.update({
         where: { id: application.userId },

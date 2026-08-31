@@ -1,7 +1,7 @@
 datasource db {
   provider  = "sqlite"
   url       = env("DATABASE_URL")
-  // // // // // // // // // // // // // directUrl = env("DIRECT_URL")
+  // // // // // // // // // // // // // // // // directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -339,6 +339,12 @@ model DoctorSettings {
   id                     String   @id @default(uuid())
   doctorId               String   @unique
   isAiEnabled            Boolean  @default(true)
+  n8nEnabled             Boolean  @default(false)
+  n8nWebhookUrl          String?
+  integrationStatus      String   @default("READY") // "NOT_CONFIGURED" | "READY" | "HEALTHY" | "ERROR" | "DISABLED"
+  lastHealthCheckAt      DateTime?
+  lastIntegrationError   String?
+  customSystemPrompt     String?
   whatsappAccessToken    String?
   whatsappPhoneNumberId  String?
   whatsappVerifyToken    String?

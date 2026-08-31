@@ -91,10 +91,21 @@ export async function PATCH(req: NextRequest) {
     },
   });
 
+  const {
+    n8nEnabled,
+    n8nWebhookUrl,
+    customSystemPrompt,
+    integrationStatus,
+  } = body;
+
   await db.doctorSettings.upsert({
     where: { doctorId: targetDoctorId },
     update: {
       ...(isAiEnabled !== undefined && { isAiEnabled: Boolean(isAiEnabled) }),
+      ...(n8nEnabled !== undefined && { n8nEnabled: Boolean(n8nEnabled) }),
+      ...(n8nWebhookUrl !== undefined && { n8nWebhookUrl }),
+      ...(customSystemPrompt !== undefined && { customSystemPrompt }),
+      ...(integrationStatus !== undefined && { integrationStatus }),
       ...(greetingTemplate && { greetingTemplate }),
       ...(workingHoursTemplate && { workingHoursTemplate }),
       ...(handoffTemplate && { handoffTemplate }),
@@ -104,6 +115,11 @@ export async function PATCH(req: NextRequest) {
     },
     create: {
       doctorId: targetDoctorId,
+      isAiEnabled: isAiEnabled !== undefined ? Boolean(isAiEnabled) : true,
+      n8nEnabled: n8nEnabled !== undefined ? Boolean(n8nEnabled) : false,
+      n8nWebhookUrl,
+      customSystemPrompt,
+      integrationStatus: integrationStatus || "READY",
       greetingTemplate: greetingTemplate || "أهلاً بك 👋 أنا مريم المساعدة الخاصة بدكتور أحمد. إزاي أقدر أساعدك؟",
       workingHoursTemplate: workingHoursTemplate || "مواعيد الدكتور من السبت للخميس 4 م لـ 10 م.",
       handoffTemplate: handoffTemplate || "تم تحويل المحادثة لمساعد الاستقبال الخاص بدكتور أحمد.",

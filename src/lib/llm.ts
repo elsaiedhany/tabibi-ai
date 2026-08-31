@@ -202,102 +202,40 @@ export async function queryDoctorLlm(config: LlmCallConfig): Promise<LlmResponse
 
   const locationsStr = doctor?.locations.map((l) => `${l.name}: ${l.address}`).join(" | ") || "العيادة الرئيسية";
   const servicesStr = doctor?.services.map((s) => `${s.name}: ${s.price} ج.م`).join(", ") || "كشف رئيسي";
-  const faqsStr = doctor?.faqs.map((f) => `س: ${f.question} -> ج: ${f.answer}`).join("\n") || "";
-
-  const systemPrompt = `أنت "${doctor?.aiName || "مريم"}"، مساعدة استقبال بشرية ذكية ولطيفة خاصة بعيادة ${doctor?.name || "الدكتور"} (${doctor?.specialty}).
-
-🎯 أسلوب الشخصية (Egyptian Receptionist Persona):
-1. الرد باللهجة المصرية الطبيعية الدافئة، بأسلوب محترم وقصير ومناسب للواتساب.
-2. عدم كتابة قوائم طولية جافة إلا إذا كانت ضرورية جداً.
-3. الإجابة بدقة عن أي أسئلة بناءً على البيانات المعتمدة أدناه.
-4. يمنع منعاً باتاً اختراع أسعار أو مواعيد أو عناوين غير موجودة في البيانات المعتمدة.
-5. يمنع تقديم تشخيص طبي أو وصف أدوية.
-6. إذا سال المريض أكثر من سؤال، أجيبي عن الأسئلة بلباقة في رد واحد منظم.
-7. اسألي سؤالاً واحداً واضحاً ومباشراً لتسهيل خطوة الحجز.
-
-📋 بيانات العيادة المعتمدة:
-- اسم الطبيب: ${doctor?.name} (${doctor?.title})
-- التخصص: ${doctor?.specialty}
-- سعر الكشف: ${doctor?.consultationPrice} ج.م
-- سعر المتابعة: ${doctor?.followupPrice} ج.م
-- مواعيد العمل: ${doctor?.workingHours}
-- الفروع والعناوين: ${locationsStr}
-- الخدمات والأسعار: ${servicesStr}
-- الأسئلة الشائعة:
-${faqsStr}`;
-
-  const selectedModel = complexity === "HIGH" ? MODEL_HIGH : MODEL_LOW;
-
   try {
-    if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.includes("mock")) {
-      // Warm Egyptian Arabic Mock Reply for Local Development
-      const isPrice = userMessage.includes("بكام") || userMessage.includes("سعر");
-      const isHours = userMessage.includes("مواعيد") || userMessage.includes("جمعة") || userMessage.includes("امتى");
+    const { getAIProvider } = await import("./ai/openai-provider");
+    const aiProvider = getAIProvider();
 
-      let mockReply = "";
-      if (isPrice && isHours) {
-        mockReply = `أهلاً بحضرتك! سعر الكشف مع د. ${doctor?.name} بـ ${doctor?.consultationPrice} ج.م، ومواعيد العيادة ${doctor?.workingHours}. تحب أساعدك تحجز ميعاد المناسب ليك؟`;
-      } else if (isPrice) {
-        mockReply = `أهلاً بحضرتك! سعر الكشف مع د. ${doctor?.name} (${doctor?.specialty}) هو ${doctor?.consultationPrice} ج.م والمتابعة خلال 14 يوم بـ ${doctor?.followupPrice} ج.م. تحب أسجلك حجز كشف؟`;
-      } else if (isHours) {
-        mockReply = `أهلاً بحضرتك! مواعيد د. ${doctor?.name} هي ${doctor?.workingHours}. العيادة في ${locationsStr}. تحب تحجز ميعاد بكرة أو يوم تاني؟`;
-      } else {
-        mockReply = `أهلاً بك! بالنسبة لاستفسارك عن "${userMessage}"، يسعدني إفادتك بأن د. ${doctor?.name} يتشرف بزيارتك. سعر الكشف ${doctor?.consultationPrice} ج.م ومواعيده ${doctor?.workingHours}. تحب أساعدك تحجز ميعاد؟`;
-      }
+    const doctorSettings = await db.doctorSettings.findUnique({ where: { doctorId } });
 
-      const inputTokens = 150;
-      const outputTokens = 50;
-      const cost = calculateCost(selectedModel, inputTokens, outputTokens);
-
-      if (conversationId) {
-        await db.aiUsage.create({
-          data: {
-            doctorId,
-            conversationId,
-            model: selectedModel,
-            inputTokens,
-            outputTokens,
-            estimatedCost: cost,
-            reasonForCall: reason,
-            complexity,
-          },
-        });
-      }
-
-      return {
-        content: mockReply,
-        inputTokens,
-        outputTokens,
-        estimatedCost: cost,
-        modelUsed: selectedModel,
-        isFallback: false,
-      };
-    }
-
-    const completion = await openai.chat.completions.create({
-      model: selectedModel,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: `المحادثة السابقة:\n${historyFormatted}\n\nرسالة المريض الحالية:\n${userMessage}` },
-      ],
-      max_tokens: 220,
-      temperature: 0.3,
+    const aiRes = await aiProvider.generateResponse({
+      doctorId,
+      doctorName: doctor?.name || "الدكتور",
+      specialty: doctor?.specialty || "طب عام",
+      workingHours: doctor?.workingHours || "يومياً",
+      consultationPrice: doctor?.consultationPrice,
+      followupPrice: doctor?.followupPrice,
+      services: doctor?.services.map((s) => ({ name: s.name, price: s.price, durationMinutes: s.durationMinutes })) || [],
+      locations: doctor?.locations.map((l) => ({ name: l.name, address: l.address })) || [],
+      conversationHistory: messagesHistory.reverse().map((m) => ({
+        role: m.sender === "PATIENT" ? ("user" as const) : ("assistant" as const),
+        content: m.content,
+      })),
+      userMessage,
+      systemPromptOverride: doctorSettings?.customSystemPrompt,
+      aiTone: doctor?.aiTone,
+      aiName: doctor?.aiName,
     });
 
-    const replyText = completion.choices[0]?.message?.content || "أهلاً بحضرتك! هحولك لمساعد الاستقبال فوراً لمساعدتك.";
-    const inTokens = completion.usage?.prompt_tokens || 120;
-    const outTokens = completion.usage?.completion_tokens || 45;
-    const cost = calculateCost(selectedModel, inTokens, outTokens);
-
-    if (conversationId) {
+    if (conversationId && aiRes.inputTokens > 0) {
       await db.aiUsage.create({
         data: {
           doctorId,
           conversationId,
-          model: selectedModel,
-          inputTokens: inTokens,
-          outputTokens: outTokens,
-          estimatedCost: cost,
+          model: aiRes.modelName,
+          inputTokens: aiRes.inputTokens,
+          outputTokens: aiRes.outputTokens,
+          estimatedCost: aiRes.estimatedCostUsd,
           reasonForCall: reason,
           complexity,
         },
@@ -305,11 +243,11 @@ ${faqsStr}`;
     }
 
     return {
-      content: replyText,
-      inputTokens: inTokens,
-      outputTokens: outTokens,
-      estimatedCost: cost,
-      modelUsed: selectedModel,
+      content: aiRes.replyText,
+      inputTokens: aiRes.inputTokens,
+      outputTokens: aiRes.outputTokens,
+      estimatedCost: aiRes.estimatedCostUsd,
+      modelUsed: aiRes.modelName,
       isFallback: false,
     };
   } catch (error) {
