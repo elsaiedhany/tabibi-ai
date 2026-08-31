@@ -4,6 +4,11 @@ const path = require("path");
 const envPath = path.join(__dirname, "../.env");
 const schemaPath = path.join(__dirname, "../prisma/schema.prisma");
 
+// Read local .env content if present
+const envContent = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf8") : "";
+const match = envContent.match(/DATABASE_URL=["']?([^"'\r\n]+)["']?/);
+const localDbUrl = match ? match[1] : "";
+
 // If running inside Vercel build container, remove local .env file to prevent overriding Vercel project environment variables
 if (process.env.VERCEL) {
   console.log("⚡ Vercel Build Environment detected. Stripping local .env file to ensure Vercel Project Secrets are used...");
@@ -12,7 +17,7 @@ if (process.env.VERCEL) {
   }
 }
 
-const dbUrl = process.env.DATABASE_URL || "";
+const dbUrl = process.env.DATABASE_URL || localDbUrl;
 const directUrl = process.env.DIRECT_URL || "";
 const isVercel = Boolean(process.env.VERCEL);
 const isPostgres = dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://") || isVercel;
