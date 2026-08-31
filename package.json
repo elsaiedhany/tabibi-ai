@@ -9,7 +9,7 @@
     "lint": "tsc --noEmit",
     "db:push": "prisma db push",
     "db:seed": "npx ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" prisma/seed.ts",
-    "test": "vitest run"
+    "test": "node scripts/prebuild.js && prisma generate && vitest run"
   },
   "dependencies": {
     "@prisma/client": "^5.19.0",
