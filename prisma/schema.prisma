@@ -331,6 +331,7 @@ model Reminder {
 model DoctorSettings {
   id                     String   @id @default(uuid())
   doctorId               String   @unique
+  isAiEnabled            Boolean  @default(true)
   whatsappAccessToken    String?
   whatsappPhoneNumberId  String?
   whatsappVerifyToken    String?

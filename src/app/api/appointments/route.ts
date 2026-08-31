@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
         doctorId: targetDoctorId,
         date,
         time,
-        status: { in: ["SCHEDULED", "RESCHEDULED"] },
+        status: { in: ["SCHEDULED", "CONFIRMED", "RESCHEDULED"] },
       },
     });
 

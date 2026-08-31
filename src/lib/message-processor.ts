@@ -83,7 +83,41 @@ export async function processIncomingPatientMessage(
     data: { lastIntent: String(detected.intent) },
   });
 
-  // 3. Human Active Guardrail: If Receptionist took over, suppress AI reply
+  const doctorSettings = await db.doctorSettings.findUnique({ where: { doctorId } });
+
+  // 3. Clinic AI Global Switch Guardrail: If Doctor turned off AI, route to Human Handoff
+  if (doctorSettings && doctorSettings.isAiEnabled === false) {
+    if (conversation.handoffStatus !== HandoffStatus.HUMAN_ACTIVE) {
+      await db.conversation.update({
+        where: { id: conversation.id },
+        data: { handoffStatus: HandoffStatus.HUMAN_ACTIVE },
+      });
+    }
+
+    const handoffText = doctorSettings.handoffTemplate || "تم تحويل المحادثة لمساعد الاستقبال الخاص بالدكتور وسيقوم بالرد فوراً.";
+    await sendWhatsAppTextMessage(patientPhone, handoffText).catch(console.error);
+
+    await db.message.create({
+      data: {
+        conversationId: conversation.id,
+        sender: "BOT",
+        content: handoffText,
+        wasHandledByAi: false,
+        ruleMatched: "CLINIC_AI_DISABLED",
+      },
+    });
+
+    return {
+      replyText: handoffText,
+      handledBy: "HUMAN_TAKEOVER",
+      intent: detected.intent,
+      conversationState: conversation.state as ConversationState,
+      handoffStatus: HandoffStatus.HUMAN_ACTIVE,
+      aiCost: 0,
+    };
+  }
+
+  // 3.5. Human Active Guardrail: If Receptionist took over, suppress AI reply
   if (conversation.handoffStatus === HandoffStatus.HUMAN_ACTIVE) {
     return {
       replyText: "[تم استلام الرسالة، المحادثة تحت يد مساعد الاستقبال الخاص بالدكتور]",

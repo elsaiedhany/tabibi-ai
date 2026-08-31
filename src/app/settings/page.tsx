@@ -12,6 +12,7 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [aiTone, setAiTone] = useState("EGYPTIAN_FRIENDLY");
+  const [isAiEnabled, setIsAiEnabled] = useState(true);
   const [maxDailyAiBudget, setMaxDailyAiBudget] = useState("10.0");
   const [maxAiCallsPerDay, setMaxAiCallsPerDay] = useState("200");
   const [greetingTemplate, setGreetingTemplate] = useState("");
@@ -36,6 +37,7 @@ export default function SettingsPage() {
           setMaxAiCallsPerDay(c.maxAiCallsPerDay?.toString() || "200");
 
           if (c.settings) {
+            setIsAiEnabled(c.settings.isAiEnabled ?? true);
             setGreetingTemplate(c.settings.greetingTemplate || "");
             setWorkingHoursTemplate(c.settings.workingHoursTemplate || "");
             setHandoffTemplate(c.settings.handoffTemplate || "");
@@ -63,6 +65,7 @@ export default function SettingsPage() {
           phone,
           whatsappNumber,
           aiTone,
+          isAiEnabled,
           maxDailyAiBudget,
           maxAiCallsPerDay,
           greetingTemplate,
@@ -148,12 +151,34 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Section 2: AI Budget & Tone Limits */}
+        {/* Section 2: AI Control & Budget Limits */}
         <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
-          <h3 className="font-extrabold text-white text-base border-b border-slate-800 pb-3 flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-amber-400" />
-            <span>حدود وميزانية الذكاء الاصطناعي (AI Budget Limits)</span>
-          </h3>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-3 gap-3">
+            <h3 className="font-extrabold text-white text-base flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-amber-400" />
+              <span>مساعد الذكاء الاصطناعي وحدود الميزانية</span>
+            </h3>
+
+            {/* AI Global Toggle Switch */}
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold text-slate-300">
+                {isAiEnabled ? "تفعيل الـ AI للمحادثات ⚡" : "إيقاف الـ AI (تحويل مباشر للاستقبال) ⏸️"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsAiEnabled(!isAiEnabled)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  isAiEnabled ? "bg-brand-500" : "bg-slate-700"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    isAiEnabled ? "translate-x-0" : "-translate-x-5"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>

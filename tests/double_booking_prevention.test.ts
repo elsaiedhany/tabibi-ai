@@ -77,7 +77,7 @@ describe("🔒 Double Booking & Atomic Collision Prevention Test Suite", () => {
           doctorId,
           date: "2026-09-01",
           time: "18:00",
-          status: { in: ["SCHEDULED", "RESCHEDULED"] },
+          status: { in: ["SCHEDULED", "CONFIRMED", "RESCHEDULED"] },
         },
       });
 

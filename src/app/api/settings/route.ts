@@ -58,6 +58,7 @@ export async function PATCH(req: NextRequest) {
     aiTone,
     maxDailyAiBudget,
     maxAiCallsPerDay,
+    isAiEnabled,
     greetingTemplate,
     workingHoursTemplate,
     handoffTemplate,
@@ -93,6 +94,7 @@ export async function PATCH(req: NextRequest) {
   await db.doctorSettings.upsert({
     where: { doctorId: targetDoctorId },
     update: {
+      ...(isAiEnabled !== undefined && { isAiEnabled: Boolean(isAiEnabled) }),
       ...(greetingTemplate && { greetingTemplate }),
       ...(workingHoursTemplate && { workingHoursTemplate }),
       ...(handoffTemplate && { handoffTemplate }),
