@@ -18,7 +18,7 @@ if (process.env.VERCEL) {
 }
 
 const dbUrl = process.env.DATABASE_URL || localDbUrl;
-const directUrl = process.env.DIRECT_URL || "";
+const directUrl = process.env.DIRECT_URL || dbUrl;
 const isVercel = Boolean(process.env.VERCEL);
 const isPostgres = dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://") || isVercel;
 
@@ -28,17 +28,20 @@ if (isPostgres) {
     console.error("❌ CRITICAL PRODUCTION BUILD ERROR: DATABASE_URL environment variable is missing!");
     process.exit(1);
   }
-  if (isVercel && !directUrl) {
-    console.error("❌ CRITICAL PRODUCTION BUILD ERROR: DIRECT_URL environment variable is missing!");
-    process.exit(1);
-  }
 
   console.log("✅ Production PostgreSQL environment verified. Standardizing schema provider = 'postgresql'.");
   const baseSchema = fs.readFileSync(schemaPath, "utf8");
-  const pgSchema = baseSchema
+  
+  let pgSchema = baseSchema
     .replace('provider  = "sqlite"', 'provider  = "postgresql"')
-    .replace('provider = "sqlite"', 'provider = "postgresql"')
-    .replace('// directUrl = env("DIRECT_URL")', 'directUrl = env("DIRECT_URL")');
+    .replace('provider = "sqlite"', 'provider = "postgresql"');
+    
+  if (directUrl && directUrl !== dbUrl) {
+    pgSchema = pgSchema.replace('// directUrl = env("DIRECT_URL")', 'directUrl = env("DIRECT_URL")');
+  } else {
+    pgSchema = pgSchema.replace('directUrl = env("DIRECT_URL")', '// directUrl = env("DIRECT_URL")');
+  }
+  
   fs.writeFileSync(schemaPath, pgSchema, "utf8");
 } else {
   console.log("ℹ️ SQLite development environment detected. Setting provider = 'sqlite' for local test runner...");
