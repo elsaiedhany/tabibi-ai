@@ -82,30 +82,44 @@ export async function processIncomingPatientMessage(
   const normText = normalizeText(rawText);
   const detected: StructuredIntentResult = detectIntent(rawText);
 
-  try {
-    await db.message.create({
+  let existingPatientMessage = whatsappMessageId
+    ? await db.message.findUnique({ where: { whatsappId: whatsappMessageId } })
+    : null;
+
+  if (existingPatientMessage) {
+    await db.message.update({
+      where: { id: existingPatientMessage.id },
       data: {
-        conversationId: conversation.id,
-        sender: "PATIENT",
-        content: rawText,
         normalizedText: normText,
         detectedIntent: detected.intent,
-        status: "received",
-        whatsappId: whatsappMessageId || undefined,
       },
     });
-  } catch (err: any) {
-    if (err?.code === "P2002") {
-      return {
-        replyText: "[رسالة مكررة تم استلامها مسبقاً]",
-        handledBy: "RULE_TEMPLATE",
-        intent: detected.intent,
-        conversationState: conversation.state as ConversationState,
-        handoffStatus: conversation.handoffStatus as HandoffStatus,
-        aiCost: 0,
-      };
+  } else {
+    try {
+      await db.message.create({
+        data: {
+          conversationId: conversation.id,
+          sender: "PATIENT",
+          content: rawText,
+          normalizedText: normText,
+          detectedIntent: detected.intent,
+          status: "received",
+          whatsappId: whatsappMessageId || undefined,
+        },
+      });
+    } catch (err: any) {
+      if (err?.code === "P2002") {
+        return {
+          replyText: "[رسالة مكررة تم استلامها مسبقاً]",
+          handledBy: "RULE_TEMPLATE",
+          intent: detected.intent,
+          conversationState: conversation.state as ConversationState,
+          handoffStatus: conversation.handoffStatus as HandoffStatus,
+          aiCost: 0,
+        };
+      }
+      throw err;
     }
-    throw err;
   }
 
   await db.conversation.update({

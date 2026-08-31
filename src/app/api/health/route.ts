@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { authenticateApiRequest } from "@/lib/auth";
-import { Role } from "@/types/index";
 
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
@@ -9,6 +7,8 @@ export async function GET(req: NextRequest) {
   let activeDoctorsCount = 0;
   let totalAppointmentsToday = 0;
   let totalAiUsageToday = 0;
+  let queuedJobsCount = 0;
+  let deadLetterJobsCount = 0;
   let systemAlerts: string[] = [];
 
   try {
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     });
     totalAiUsageToday = aiAgg._sum.estimatedCost || 0;
 
-    // 2. Check for System Warnings (Unconfigured WhatsApp tokens or high error rates)
+    // 2. Check for System Warnings
     const docsWithoutToken = await db.doctorSettings.count({
       where: { whatsappAccessToken: null },
     });
@@ -47,6 +47,13 @@ export async function GET(req: NextRequest) {
     if (failedMessagesCount > 0) {
       systemAlerts.push(`تنبيه: فشل إرسال ${failedMessagesCount} رسائل واتساب اليوم`);
     }
+
+    queuedJobsCount = await db.message.count({ where: { processingState: "QUEUED" } });
+    deadLetterJobsCount = await db.message.count({ where: { processingState: "DEAD_LETTER" } });
+
+    if (deadLetterJobsCount > 0) {
+      systemAlerts.push(`تنبيه عاجل: يوجد ${deadLetterJobsCount} رسائل في Dead Letter Queue بحاجة للمراجعة`);
+    }
   } catch (error) {
     dbStatus = "UNHEALTHY";
     systemAlerts.push("عطل في الاتصال بقاعدة البيانات");
@@ -59,10 +66,15 @@ export async function GET(req: NextRequest) {
     timestamp: new Date().toISOString(),
     responseTimeMs,
     database: dbStatus,
+    queue: {
+      backlogCount: queuedJobsCount,
+      deadLetterCount: deadLetterJobsCount,
+      mode: process.env.QSTASH_TOKEN ? "QSTASH" : "ASYNC_DISPATCH",
+    },
     metrics: {
       activeDoctorsCount,
       totalAppointmentsToday,
-      totalAiUsageCostTodayEgp: totalAiUsageToday,
+      totalAiUsageCostTodayEgp: Math.round(totalAiUsageToday * 50 * 100) / 100,
     },
     alerts: systemAlerts,
   });

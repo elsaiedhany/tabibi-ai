@@ -230,6 +230,20 @@ async function runRedTeamAudit() {
     `Created ${dbReplayMessages} records`
   );
 
+  // ----------------------------------------------------
+  // TEST 7: Worker Security — Direct unauthenticated access to /api/whatsapp/worker
+  // ----------------------------------------------------
+  const unauthWorkerCall = await httpRequest(
+    `${APP_BASE_URL}/api/whatsapp/worker`,
+    { method: "POST", headers: { "Content-Type": "application/json" } },
+    { doctorId: doctorA.id, patientPhone: "201000", rawText: "اختبار" }
+  );
+  assertTest(
+    unauthWorkerCall.status === 401,
+    "WORKER AUTH: Direct unauthenticated call to /api/whatsapp/worker rejected with 401",
+    `Got status ${unauthWorkerCall.status}`
+  );
+
   // Clean up replay test data
   await prisma.message.deleteMany({ where: { whatsappId: replayWamid } });
   await prisma.doctor.deleteMany({ where: { email: { in: ["doctor_a_redteam@tabibi.ai", "doctor_b_redteam@tabibi.ai"] } } });

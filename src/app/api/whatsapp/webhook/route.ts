@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { parseWhatsAppWebhookPayload, resolveDoctorFromWhatsAppPayload } from "@/lib/whatsapp";
-import { processIncomingPatientMessage } from "@/lib/message-processor";
+import { publishWhatsAppWorkerJob } from "@/lib/queue";
 import { logAuditEvent } from "@/lib/audit";
+import { normalizeText } from "@/lib/arabic";
+import { detectIntent } from "@/lib/intent";
+import { ConversationState, HandoffStatus } from "@/types/index";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -13,7 +16,6 @@ export async function GET(req: NextRequest) {
   const expectedToken = process.env.WHATSAPP_VERIFY_TOKEN || "tabibi_webhook_verify_secret";
 
   if (mode === "subscribe" && token) {
-    // Check global token or doctor-specific verify token in DB
     if (token === expectedToken) {
       return new NextResponse(challenge || "OK", { status: 200 });
     }
@@ -31,6 +33,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const startTime = performance.now();
   try {
     const body = await req.json();
     const parsed = parseWhatsAppWebhookPayload(body);
@@ -39,9 +42,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: "ignored_non_message" });
     }
 
-    // 1. WAMID Idempotency Check: Prevent duplicate message processing
+    // 1. WAMID Idempotency Check: Instant return if already processed/queued
     if (parsed.messageId) {
-      const existingMessage = await db.message.findFirst({
+      const existingMessage = await db.message.findUnique({
         where: { whatsappId: parsed.messageId },
       });
 
@@ -50,7 +53,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2. Multi-Tenant Doctor Resolution (From Meta Payload Metadata / Phone Number)
+    // 2. Multi-Tenant Doctor Resolution
     const doctor = await resolveDoctorFromWhatsAppPayload(parsed);
 
     if (!doctor) {
@@ -62,7 +65,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "حساب الطبيب موقوف حالياً" }, { status: 403 });
     }
 
-    // 3. Server-Side Subscription Check
+    // 3. Subscription Check
     const { getDoctorSubscriptionStatus } = await import("@/lib/subscription");
     const subStatus = await getDoctorSubscriptionStatus(doctor.id);
 
@@ -75,16 +78,95 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "اشتراك الطبيب منتهي أو موقوف", status: subStatus.status }, { status: 402 });
     }
 
-    // 4. Process Patient Message strictly scoped to resolved Doctor context
-    const result = await processIncomingPatientMessage({
+    // 4. Fast Patient & Conversation Resolution
+    let patient = await db.patient.findUnique({
+      where: { doctorId_whatsappNumber: { doctorId: doctor.id, whatsappNumber: parsed.from } },
+    });
+
+    if (!patient) {
+      try {
+        patient = await db.patient.create({
+          data: {
+            doctorId: doctor.id,
+            whatsappNumber: parsed.from,
+            name: `مريض (${parsed.from.slice(-4)})`,
+          },
+        });
+      } catch (err: any) {
+        if (err?.code === "P2002") {
+          patient = (await db.patient.findUnique({
+            where: { doctorId_whatsappNumber: { doctorId: doctor.id, whatsappNumber: parsed.from } },
+          }))!;
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    let conversation = await db.conversation.findFirst({
+      where: { doctorId: doctor.id, patientId: patient.id },
+    });
+
+    if (!conversation) {
+      try {
+        conversation = await db.conversation.create({
+          data: {
+            doctorId: doctor.id,
+            patientId: patient.id,
+            state: ConversationState.IDLE,
+            handoffStatus: HandoffStatus.AI_ACTIVE,
+          },
+        });
+      } catch (_) {
+        conversation = (await db.conversation.findFirst({
+          where: { doctorId: doctor.id, patientId: patient.id },
+        }))!;
+      }
+    }
+
+    const normText = normalizeText(parsed.text);
+    const detected = detectIntent(parsed.text);
+
+    // 5. Persist Durable Message Record with QUEUED state
+    try {
+      await db.message.create({
+        data: {
+          conversationId: conversation.id,
+          sender: "PATIENT",
+          content: parsed.text,
+          normalizedText: normText,
+          detectedIntent: detected.intent,
+          status: "received",
+          whatsappId: parsed.messageId || undefined,
+          processingState: "QUEUED",
+          queuedAt: new Date(),
+        },
+      });
+    } catch (err: any) {
+      if (err?.code === "P2002") {
+        return NextResponse.json({ status: "ignored_duplicate", messageId: parsed.messageId }, { status: 200 });
+      }
+      throw err;
+    }
+
+    // 6. Publish Job to Queue & Return Instant HTTP 200 OK (< 50ms)
+    await publishWhatsAppWorkerJob({
       doctorId: doctor.id,
       patientPhone: parsed.from,
       rawText: parsed.text,
       mediaType: parsed.mediaType,
-      whatsappMessageId: parsed.messageId,
+      whatsappMessageId: parsed.messageId || `synthetic_${Date.now()}`,
+      queuedAt: new Date().toISOString(),
     });
 
-    return NextResponse.json({ success: true, result });
+    const durationMs = Math.round(performance.now() - startTime);
+
+    return NextResponse.json({
+      success: true,
+      status: "queued",
+      messageId: parsed.messageId,
+      durationMs,
+    });
   } catch (error: any) {
     if (error?.code === "P2002") {
       return NextResponse.json({ status: "ignored_duplicate" }, { status: 200 });

@@ -1,7 +1,7 @@
 datasource db {
   provider  = "sqlite"
   url       = env("DATABASE_URL")
-  // // // // // // // // // // // directUrl = env("DIRECT_URL")
+  // // // // // // // // // // // // // directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -230,23 +230,29 @@ model Conversation {
 }
 
 model Message {
-  id             String       @id @default(uuid())
-  conversationId String
-  sender         String       // "PATIENT" | "BOT" | "HUMAN_AGENT"
-  content        String
-  normalizedText String?
-  detectedIntent String?
-  wasHandledByAi Boolean      @default(false)
-  ruleMatched    String?
-  mediaType      String?      // "text" | "audio" | "image" | "document"
-  mediaUrl       String?
-  status         String       @default("delivered") // "sent", "delivered", "read"
-  whatsappId     String?      @unique
-  createdAt      DateTime     @default(now())
+  id              String       @id @default(uuid())
+  conversationId  String
+  sender          String       // "PATIENT" | "BOT" | "HUMAN_AGENT"
+  content         String
+  normalizedText  String?
+  detectedIntent  String?
+  wasHandledByAi  Boolean      @default(false)
+  ruleMatched     String?
+  mediaType       String?      // "text" | "audio" | "image" | "document"
+  mediaUrl        String?
+  status          String       @default("delivered") // "sent", "delivered", "read"
+  whatsappId      String?      @unique
+  processingState String       @default("PROCESSED") // "QUEUED" | "PROCESSING" | "PROCESSED" | "FAILED" | "DEAD_LETTER"
+  attempts        Int          @default(0)
+  lastError       String?
+  queuedAt        DateTime?
+  processedAt     DateTime?
+  createdAt       DateTime     @default(now())
 
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId])
+  @@index([processingState])
   @@map("messages")
 }
 
