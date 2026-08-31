@@ -1,7 +1,7 @@
 datasource db {
   provider  = "sqlite"
   url       = env("DATABASE_URL")
-  // // // // // directUrl = env("DIRECT_URL")
+  // // // // // // // // directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -241,7 +241,7 @@ model Message {
   mediaType      String?      // "text" | "audio" | "image" | "document"
   mediaUrl       String?
   status         String       @default("delivered") // "sent", "delivered", "read"
-  whatsappId     String?
+  whatsappId     String?      @unique
   createdAt      DateTime     @default(now())
 
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)

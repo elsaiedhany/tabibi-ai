@@ -85,7 +85,10 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, result });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === "P2002") {
+      return NextResponse.json({ status: "ignored_duplicate" }, { status: 200 });
+    }
     return NextResponse.json({ error: "حدث خطأ في معالجة الويب هوك" }, { status: 500 });
   }
 }

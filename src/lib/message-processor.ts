@@ -66,17 +66,31 @@ export async function processIncomingPatientMessage(
   const normText = normalizeText(rawText);
   const detected: StructuredIntentResult = detectIntent(rawText);
 
-  await db.message.create({
-    data: {
-      conversationId: conversation.id,
-      sender: "PATIENT",
-      content: rawText,
-      normalizedText: normText,
-      detectedIntent: detected.intent,
-      status: "received",
-      whatsappId: whatsappMessageId,
-    },
-  });
+  try {
+    await db.message.create({
+      data: {
+        conversationId: conversation.id,
+        sender: "PATIENT",
+        content: rawText,
+        normalizedText: normText,
+        detectedIntent: detected.intent,
+        status: "received",
+        whatsappId: whatsappMessageId || undefined,
+      },
+    });
+  } catch (err: any) {
+    if (err?.code === "P2002") {
+      return {
+        replyText: "[رسالة مكررة تم استلامها مسبقاً]",
+        handledBy: "RULE_TEMPLATE",
+        intent: detected.intent,
+        conversationState: conversation.state as ConversationState,
+        handoffStatus: conversation.handoffStatus as HandoffStatus,
+        aiCost: 0,
+      };
+    }
+    throw err;
+  }
 
   await db.conversation.update({
     where: { id: conversation.id },
