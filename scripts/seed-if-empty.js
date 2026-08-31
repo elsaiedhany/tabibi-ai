@@ -27,8 +27,11 @@ async function main() {
       });
 
       // 2. Create Doctor A & User
-      const docA = await prisma.doctor.create({
-        data: {
+      // 2. Create Doctor A & User
+      const docA = await prisma.doctor.upsert({
+        where: { whatsappNumber: "201012345678" },
+        update: {},
+        create: {
           name: "د. أحمد محمد",
           title: "استشاري الأمراض الجلدية والتناسلية وتجميل الجلد",
           specialty: "جلدية وتجميل",
@@ -43,8 +46,10 @@ async function main() {
         },
       });
 
-      const userDocA = await prisma.user.create({
-        data: {
+      const userDocA = await prisma.user.upsert({
+        where: { email: "ahmed@clinic.com" },
+        update: {},
+        create: {
           email: "ahmed@clinic.com",
           name: "د. أحمد محمد",
           passwordHash: doctorPasswordHash,
@@ -53,21 +58,30 @@ async function main() {
         },
       });
 
-      await prisma.doctorUser.create({
-        data: { doctorId: docA.id, userId: userDocA.id, role: "DOCTOR" },
+      await prisma.doctorUser.upsert({
+        where: { doctorId_userId: { doctorId: docA.id, userId: userDocA.id } },
+        update: {},
+        create: { doctorId: docA.id, userId: userDocA.id, role: "DOCTOR" },
       });
 
-      await prisma.subscription.create({
-        data: { doctorId: docA.id, plan: "PRO", status: "ACTIVE" },
-      });
+      const subA = await prisma.subscription.findFirst({ where: { doctorId: docA.id } });
+      if (!subA) {
+        await prisma.subscription.create({
+          data: { doctorId: docA.id, plan: "PRO", status: "ACTIVE" },
+        });
+      }
 
-      await prisma.doctorSettings.create({
-        data: { doctorId: docA.id },
+      await prisma.doctorSettings.upsert({
+        where: { doctorId: docA.id },
+        update: {},
+        create: { doctorId: docA.id },
       });
 
       // 3. Create Doctor B & User
-      const docB = await prisma.doctor.create({
-        data: {
+      const docB = await prisma.doctor.upsert({
+        where: { whatsappNumber: "201099887766" },
+        update: {},
+        create: {
           name: "د. سارة محمود",
           title: "أخصائي طب الأطفال وحاديثي الولادة",
           specialty: "أطفال حديثي ولادة",
@@ -82,8 +96,10 @@ async function main() {
         },
       });
 
-      const userDocB = await prisma.user.create({
-        data: {
+      const userDocB = await prisma.user.upsert({
+        where: { email: "sara@tabibi.ai" },
+        update: {},
+        create: {
           email: "sara@tabibi.ai",
           name: "د. سارة محمود",
           passwordHash: doctorPasswordHash,
@@ -92,16 +108,23 @@ async function main() {
         },
       });
 
-      await prisma.doctorUser.create({
-        data: { doctorId: docB.id, userId: userDocB.id, role: "DOCTOR" },
+      await prisma.doctorUser.upsert({
+        where: { doctorId_userId: { doctorId: docB.id, userId: userDocB.id } },
+        update: {},
+        create: { doctorId: docB.id, userId: userDocB.id, role: "DOCTOR" },
       });
 
-      await prisma.subscription.create({
-        data: { doctorId: docB.id, plan: "PRO", status: "ACTIVE" },
-      });
+      const subB = await prisma.subscription.findFirst({ where: { doctorId: docB.id } });
+      if (!subB) {
+        await prisma.subscription.create({
+          data: { doctorId: docB.id, plan: "PRO", status: "ACTIVE" },
+        });
+      }
 
-      await prisma.doctorSettings.create({
-        data: { doctorId: docB.id },
+      await prisma.doctorSettings.upsert({
+        where: { doctorId: docB.id },
+        update: {},
+        create: { doctorId: docB.id },
       });
 
       // 4. Create Staff User for Doctor A
