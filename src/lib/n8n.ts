@@ -48,6 +48,29 @@ export function generateN8nSignature(rawBody: string, timestamp: string): string
 }
 
 /**
+ * Cryptographically verifies an incoming X-Tabibi-Signature against N8N_SHARED_SECRET.
+ */
+export function verifyN8nSignature(rawBody: string, timestamp: string, signatureHeader: string): boolean {
+  if (!timestamp || !signatureHeader) return false;
+
+  const parts = signatureHeader.split(",");
+  const v1Part = parts.find((p) => p.trim().startsWith("v1="));
+  if (!v1Part) return false;
+
+  const providedSignature = v1Part.trim().replace("v1=", "");
+  const expectedSignature = generateN8nSignature(rawBody, timestamp);
+
+  try {
+    const providedBuffer = Buffer.from(providedSignature, "hex");
+    const expectedBuffer = Buffer.from(expectedSignature, "hex");
+    if (providedBuffer.length !== expectedBuffer.length) return false;
+    return crypto.timingSafeEqual(providedBuffer, expectedBuffer);
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
  * Dispatches WhatsApp event to n8n dynamic workflow orchestrator with HMAC authentication & 5s timeout.
  */
 export async function dispatchToN8nOrchestrator(payload: N8nOrchestrationPayload): Promise<N8nOrchestrationResponse> {
@@ -84,12 +107,19 @@ export async function dispatchToN8nOrchestrator(payload: N8nOrchestrationPayload
     }
 
     const resData = await response.json();
+
+    // Validate Response Contract Schema: Must be an object containing non-empty replyText string
+    if (!resData || typeof resData !== "object" || typeof resData.replyText !== "string" || !resData.replyText.trim()) {
+      console.warn("⚠️ n8n Orchestrator returned malformed response payload:", resData);
+      return { success: false, handledBy: "BACKEND_FALLBACK", error: "MALFORMED_N8N_RESPONSE" };
+    }
+
     return {
       success: true,
       handledBy: "N8N_ORCHESTRATOR",
-      replyText: resData.replyText,
-      intent: resData.intent,
-      suggestedAction: resData.suggestedAction,
+      replyText: resData.replyText.trim(),
+      intent: resData.intent || "GENERAL_INQUIRY",
+      suggestedAction: resData.suggestedAction || { actionType: "NONE" },
     };
   } catch (err: any) {
     console.error("⚠️ n8n Orchestration Dispatch Error / Timeout:", err.message);

@@ -1,0 +1,99 @@
+{
+  "name": "Tabibi AI - Reusable Dynamic Multi-Tenant Orchestrator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tabibi-dynamic-webhook",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "name": "Webhook - Tabibi Inbound",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "tabibi-dynamic-webhook-id"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Cryptographic HMAC SHA-256 Signature Verification\nconst crypto = require('crypto');\n\nconst req = $input.item.json;\nconst headers = req.headers || {};\nconst timestamp = headers['x-tabibi-timestamp'];\nconst signatureHeader = headers['x-tabibi-signature'];\nconst rawBody = req.rawBody || JSON.stringify(req.body);\nconst secret = process.env.N8N_SHARED_SECRET || 'tabibi_n8n_hmac_shared_secret_2026';\n\nif (!timestamp || !signatureHeader) {\n  throw new Error('401: Unauthorized - Missing Tabibi security headers');\n}\n\nconst hmac = crypto.createHmac('sha256', secret);\nhmac.update(`${timestamp}.${rawBody}`);\nconst expectedSignature = hmac.digest('hex');\n\nconst parts = signatureHeader.split(',');\nconst v1Part = parts.find(p => p.trim().startsWith('v1='));\nconst providedSignature = v1Part ? v1Part.trim().replace('v1=', '') : '';\n\nif (!providedSignature || providedSignature !== expectedSignature) {\n  throw new Error('401: Unauthorized - Invalid HMAC SHA-256 signature');\n}\n\n// 2. Extract Dynamic Tenant Context\nconst payload = req.body;\nconst tenant = payload.tenantConfiguration || {};\nconst doctorName = payload.doctorName || 'الدكتور';\nconst workingHours = tenant.workingHours || 'مواعيد العيادة';\nconst services = tenant.services || [];\nconst customPrompt = tenant.customSystemPrompt || '';\nconst messageText = payload.messageText || '';\n\nreturn {\n  json: {\n    isValid: true,\n    eventId: payload.eventId,\n    clinicId: payload.clinicId,\n    doctorId: payload.doctorId,\n    doctorName,\n    patientPhone: payload.patientPhone,\n    messageText,\n    workingHours,\n    services,\n    customPrompt\n  }\n};"
+      },
+      "name": "Verify Signature & Parse Tenant",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 3. Dynamic Tenant Response Processor\nconst item = $input.item.json;\nconst msg = item.messageText.toLowerCase();\n\nconst isPrice = msg.includes('سعر') || msg.includes('بكام') || msg.includes('كشف');\nconst isHours = msg.includes('مواعيد') || msg.includes('شغالين') || msg.includes('جمعة');\n\nlet replyText = `أهلاً بحضرتك في عيادة د. ${item.doctorName}. مواعيدنا: ${item.workingHours}. سعر الكشف ${item.services[0]?.price || 500} ج.م. تحب أساعدك تحجز ميعاد؟`;\nlet intent = 'GENERAL_INQUIRY';\nlet actionType = 'NONE';\n\nif (isPrice && isHours) {\n  replyText = `أهلاً بحضرتك! سعر الكشف مع د. ${item.doctorName} بـ ${item.services[0]?.price || 500} ج.م، ومواعيد العيادة ${item.workingHours}. تحب أساعدك تحجز ميعاد المناسب ليك؟`;\n  intent = 'PRICES';\n} else if (isPrice) {\n  replyText = `أهلاً بك! سعر الكشف مع د. ${item.doctorName} هو ${item.services[0]?.price || 500} ج.م. تحب نسجلك حجز كشف؟`;\n  intent = 'PRICES';\n} else if (isHours) {\n  replyText = `أهلاً بحضرتك! مواعيد د. ${item.doctorName} هي ${item.workingHours}. تحب تحجز ميعاد بكرة أو يوم تاني؟`;\n  intent = 'WORKING_HOURS';\n} else if (msg.includes('احجز') || msg.includes('حجز')) {\n  replyText = `تمام! اختر ميعاد الكشف المناسب لك مع د. ${item.doctorName}:\n1. بكرة الساعة 6:00 مساءً\n2. الخميس الساعة 7:00 مساءً`;\n  intent = 'BOOK_APPOINTMENT';\n  actionType = 'BOOK_APPOINTMENT';\n}\n\nreturn {\n  json: {\n    replyText,\n    intent,\n    suggestedAction: {\n      actionType,\n      metadata: {\n        doctorId: item.doctorId,\n        doctorName: item.doctorName\n      }\n    }\n  }\n};"
+      },
+      "name": "Dynamic LLM & Intent Processor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "name": "Return Tabibi Contract Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        920,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - Tabibi Inbound": {
+      "main": [
+        [
+          {
+            "node": "Verify Signature & Parse Tenant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Signature & Parse Tenant": {
+      "main": [
+        [
+          {
+            "node": "Dynamic LLM & Intent Processor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dynamic LLM & Intent Processor": {
+      "main": [
+        [
+          {
+            "node": "Return Tabibi Contract Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {}
+}
